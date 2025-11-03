@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Manual Import Wizard Form View -->
+    <record id="view_manual_import_wizard_form" model="ir.ui.view">
+        <field name="name">manual.import.wizard.form</field>
+        <field name="model">manual.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Manual Attendance Import">
+                <header>
+                    <button name="action_preview" string="Preview Data" type="object" 
+                            class="btn-primary" invisible="state != 'upload'"/>
+                    <button name="action_import" string="Import Data" type="object" 
+                            class="btn-primary" invisible="state != 'preview'"
+                            confirm="Are you sure you want to import this data?"/>
+                    <button name="action_force_import" string="Force Import" type="object" 
+                            class="btn-warning" invisible="state != 'preview' or invalid_rows == 0"
+                            confirm="This will import data even with validation errors. Continue?"/>
+                    <button name="action_back" string="Back" type="object" 
+                            class="btn-secondary" invisible="state not in ('preview', 'import')"/>
+                    <button name="action_download_template" string="Download Template" type="object" 
+                            class="btn-link" invisible="state != 'upload'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="upload,preview,import"/>
+                </header>
+                
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Import Name"/>
+                        </h1>
+                    </div>
+                    
+                    <!-- Upload Step -->
+                    <group invisible="state != 'upload'">
+                        <group string="File Upload">
+                            <field name="csv_file" filename="csv_filename"/>
+                            <field name="csv_filename" invisible="1"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        
+                        <group string="CSV Format">
+                            <field name="csv_format"/>
+                            <field name="has_header"/>
+                            <field name="date_format"/>
+                        </group>
+                        
+                        <group string="Custom Format Settings" invisible="csv_format != 'custom'">
+                            <field name="employee_column"/>
+                            <field name="checkin_column"/>
+                            <field name="checkout_column"/>
+                        </group>
+                        
+                        <group string="Import Options">
+                            <field name="skip_existing"/>
+                            <field name="auto_create_employees"/>
+                            <field name="validate_only"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Preview Step -->
+                    <group invisible="state != 'preview'">
+                        <group string="Import Statistics">
+                            <field name="total_rows" readonly="1"/>
+                            <field name="valid_rows" readonly="1"/>
+                            <field name="invalid_rows" readonly="1"/>
+                        </group>
+                        
+                        <group string="Import Options">
+                            <field name="skip_existing"/>
+                            <field name="auto_create_employees"/>
+                            <field name="validate_only"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Data Preview -->
+                    <notebook invisible="state not in ('preview', 'import')">
+                        <page string="Data Preview" name="preview">
+                            <group>
+                                <field name="preview_data" widget="text" readonly="1" 
+                                       invisible="not preview_data"/>
+                            </group>
+                        </page>
+                        
+                        <page string="Validation Results" name="validation">
+                            <group>
+                                <field name="validation_results" widget="text" readonly="1"
+                                       invisible="not validation_results"/>
+                            </group>
+                        </page>
+                    </notebook>
+                    
+                    <!-- Help Text -->
+                    <div class="alert alert-info" invisible="state != 'upload'">
+                        <h4>CSV Format Guidelines:</h4>
+                        <ul>
+                            <li><strong>Standard Format:</strong> employee_code, check_in, check_out</li>
+                            <li><strong>F18 Export Format:</strong> user_id, checkin_time, checkout_time</li>
+                            <li><strong>Date Format:</strong> Use Python strftime format (e.g., %Y-%m-%d %H:%M:%S)</li>
+                            <li><strong>Employee Matching:</strong> Uses employee_number or rfid_card_code</li>
+                        </ul>
+                        <p>Click "Download Template" to get a sample CSV file.</p>
+                    </div>
+                    
+                    <div class="alert alert-warning" invisible="state != 'preview' or invalid_rows == 0">
+                        <strong>Warning:</strong> There are validation errors in your data. 
+                        Please review the validation results or use "Force Import" to skip invalid rows.
+                    </div>
+                    
+                    <div class="alert alert-success" invisible="state != 'preview' or invalid_rows > 0">
+                        <strong>Success:</strong> All data rows are valid and ready for import.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Manual Import Wizard Action -->
+    <record id="action_manual_import_wizard" model="ir.actions.act_window">
+        <field name="name">Manual Import Wizard</field>
+        <field name="res_model">manual.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_manual_import_wizard"
+              name="Manual Import"
+              parent="menu_attendance_import"
+              action="action_manual_import_wizard"
+              sequence="30"/>
+
+</odoo>

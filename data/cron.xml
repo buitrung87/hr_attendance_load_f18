@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Cron Job: Auto Import Attendance from F18 -->
+        <record id="cron_auto_import_attendance" model="ir.cron">
+            <field name="name">Auto Import Attendance from F18</field>
+            <field name="model_id" ref="model_attendance_import"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_auto_import()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).replace(hour=6, minute=0, second=0)"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="priority">5</field>
+        </record>
+
+        <!-- Cron Job: Calculate Daily Overtime -->
+        <record id="cron_calculate_overtime" model="ir.cron">
+            <field name="name">Calculate Daily Overtime</field>
+            <field name="model_id" ref="model_hr_overtime"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_calculate_overtime()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).replace(hour=23, minute=30, second=0)"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="priority">10</field>
+        </record>
+
+        <!-- Cron Job: Process Leave Deductions -->
+        <record id="cron_process_leave_deductions" model="ir.cron">
+            <field name="name">Process Daily Leave Deductions</field>
+            <field name="model_id" ref="model_leave_deduction"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_process_deductions()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).replace(hour=23, minute=45, second=0)"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="priority">15</field>
+        </record>
+
+        <!-- TODO: Implement these cron methods in models before enabling -->
+        
+        <!-- Cron Job: Update Attendance Statistics
+        <record id="cron_update_attendance_stats" model="ir.cron">
+            <field name="name">Update Employee Attendance Statistics</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_update_attendance_statistics()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="active" eval="False"/>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(hours=1)).replace(minute=0, second=0)"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="priority">20</field>
+        </record>
+
+        Cron Job: Sync F18 Machine Status
+        <record id="cron_sync_f18_status" model="ir.cron">
+            <field name="name">Sync F18 Machine Status</field>
+            <field name="model_id" ref="model_attendance_enhanced_config"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_sync_f18_status()</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="False"/>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=30))"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="priority">25</field>
+        </record>
+
+        Cron Job: Clean Old Import Logs
+        <record id="cron_clean_import_logs" model="ir.cron">
+            <field name="name">Clean Old Import Logs</field>
+            <field name="model_id" ref="model_attendance_import"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_clean_old_logs()</field>
+            <field name="interval_number">7</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="False"/>
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=7)).replace(hour=2, minute=0, second=0)"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="priority">30</field>
+        </record>
+        -->
+
+    </data>
+</odoo>

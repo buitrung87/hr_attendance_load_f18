@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Demo Employees -->
+        <record id="demo_employee_001" model="hr.employee">
+            <field name="name">John Smith</field>
+            <field name="employee_number">EMP001</field>
+            <field name="rfid">RFID001</field>
+            <field name="f18_user_id">1</field>
+            <field name="work_email">john.smith@company.com</field>
+            <field name="department_id" ref="hr.dep_rd"/>
+            <field name="job_id" ref="hr.job_developer"/>
+        </record>
+
+        <record id="demo_employee_002" model="hr.employee">
+            <field name="name">Jane Doe</field>
+            <field name="employee_number">EMP002</field>
+            <field name="rfid">RFID002</field>
+            <field name="f18_user_id">2</field>
+            <field name="work_email">jane.doe@company.com</field>
+            <field name="department_id" ref="hr.dep_rd"/>
+            <field name="job_id" ref="hr.job_developer"/>
+        </record>
+
+        <record id="demo_employee_003" model="hr.employee">
+            <field name="name">Mike Johnson</field>
+            <field name="employee_number">EMP003</field>
+            <field name="rfid">RFID003</field>
+            <field name="f18_user_id">3</field>
+            <field name="work_email">mike.johnson@company.com</field>
+            <field name="department_id" ref="hr.dep_management"/>
+            <field name="job_id" ref="hr.job_ceo"/>
+        </record>
+
+        <!-- Demo Configuration -->
+        <record id="demo_attendance_config" model="attendance.enhanced.config">
+            <field name="name">Default Configuration</field>
+            <field name="standard_working_hours">8.0</field>
+            <field name="overtime_threshold">8.0</field>
+            <field name="weekday_overtime_rate">1.5</field>
+            <field name="weekend_overtime_rate">2.0</field>
+            <field name="holiday_overtime_rate">2.5</field>
+            <field name="grace_period_minutes">15</field>
+            <field name="auto_import_enabled" eval="True"/>
+            <field name="auto_import_time">6.0</field>
+            <field name="import_days_back">1</field>
+            <field name="auto_process_deductions" eval="True"/>
+            <field name="notify_late_arrivals" eval="True"/>
+            <field name="notify_early_departures" eval="True"/>
+            <field name="notify_missing_checkout" eval="True"/>
+            <field name="csv_date_format">%Y-%m-%d %H:%M:%S</field>
+            <field name="csv_delimiter">,</field>
+        </record>
+
+        <!-- Demo Attendance Records -->
+        <record id="demo_attendance_001_day1" model="hr.attendance">
+            <field name="employee_id" ref="demo_employee_001"/>
+            <field name="check_in" eval="(DateTime.now() - timedelta(days=2)).replace(hour=8, minute=0, second=0)"/>
+            <field name="check_out" eval="(DateTime.now() - timedelta(days=2)).replace(hour=17, minute=0, second=0)"/>
+            <field name="import_source">demo</field>
+            <field name="notes">Demo attendance record</field>
+        </record>
+
+        <record id="demo_attendance_001_day2" model="hr.attendance">
+            <field name="employee_id" ref="demo_employee_001"/>
+            <field name="check_in" eval="(DateTime.now() - timedelta(days=1)).replace(hour=8, minute=30, second=0)"/>
+            <field name="check_out" eval="(DateTime.now() - timedelta(days=1)).replace(hour=18, minute=0, second=0)"/>
+            <field name="import_source">demo</field>
+            <field name="notes">Demo attendance record - late arrival with overtime</field>
+        </record>
+
+        <record id="demo_attendance_002_day1" model="hr.attendance">
+            <field name="employee_id" ref="demo_employee_002"/>
+            <field name="check_in" eval="(DateTime.now() - timedelta(days=2)).replace(hour=7, minute=45, second=0)"/>
+            <field name="check_out" eval="(DateTime.now() - timedelta(days=2)).replace(hour=16, minute=30, second=0)"/>
+            <field name="import_source">demo</field>
+            <field name="notes">Demo attendance record - early arrival and early departure</field>
+        </record>
+
+        <record id="demo_attendance_002_day2" model="hr.attendance">
+            <field name="employee_id" ref="demo_employee_002"/>
+            <field name="check_in" eval="(DateTime.now() - timedelta(days=1)).replace(hour=8, minute=0, second=0)"/>
+            <field name="check_out" eval="(DateTime.now() - timedelta(days=1)).replace(hour=17, minute=0, second=0)"/>
+            <field name="import_source">demo</field>
+            <field name="notes">Demo attendance record - normal hours</field>
+        </record>
+
+        <record id="demo_attendance_003_day1" model="hr.attendance">
+            <field name="employee_id" ref="demo_employee_003"/>
+            <field name="check_in" eval="(DateTime.now() - timedelta(days=2)).replace(hour=9, minute=0, second=0)"/>
+            <field name="check_out" eval="(DateTime.now() - timedelta(days=2)).replace(hour=19, minute=0, second=0)"/>
+            <field name="import_source">demo</field>
+            <field name="notes">Demo attendance record - late arrival with overtime</field>
+        </record>
+
+        <!-- Demo Import Record -->
+        <record id="demo_import_001" model="attendance.import">
+            <field name="name">Demo Import - F18 Machine</field>
+            <field name="import_type">f18</field>
+            <field name="import_date" eval="DateTime.now() - timedelta(days=1)"/>
+            <field name="total_records">3</field>
+            <field name="processed_records">3</field>
+            <field name="failed_records">0</field>
+            <field name="state">completed</field>
+            <field name="auto_import" eval="True"/>
+            <field name="notes">Demo import from F18 machine</field>
+        </record>
+
+        <!-- Demo Import Lines -->
+        <record id="demo_import_line_001" model="attendance.import.line">
+            <field name="import_id" ref="demo_import_001"/>
+            <field name="employee_code">EMP001</field>
+            <field name="employee_id" ref="demo_employee_001"/>
+            <field name="check_in" eval="(DateTime.now() - timedelta(days=1)).replace(hour=8, minute=30, second=0)"/>
+            <field name="check_out" eval="(DateTime.now() - timedelta(days=1)).replace(hour=18, minute=0, second=0)"/>
+            <field name="worked_hours">9.5</field>
+            <field name="raw_data">1,2024-01-15 08:30:00,2024-01-15 18:00:00</field>
+            <field name="state">processed</field>
+            <field name="attendance_id" ref="demo_attendance_001_day2"/>
+        </record>
+
+        <record id="demo_import_line_002" model="attendance.import.line">
+            <field name="import_id" ref="demo_import_001"/>
+            <field name="employee_code">EMP002</field>
+            <field name="employee_id" ref="demo_employee_002"/>
+            <field name="check_in" eval="(DateTime.now() - timedelta(days=1)).replace(hour=8, minute=0, second=0)"/>
+            <field name="check_out" eval="(DateTime.now() - timedelta(days=1)).replace(hour=17, minute=0, second=0)"/>
+            <field name="worked_hours">9.0</field>
+            <field name="raw_data">2,2024-01-15 08:00:00,2024-01-15 17:00:00</field>
+            <field name="state">processed</field>
+            <field name="attendance_id" ref="demo_attendance_002_day2"/>
+        </record>
+
+        <!-- Demo Overtime Records -->
+        <record id="demo_overtime_001" model="hr.overtime">
+            <field name="employee_id" ref="demo_employee_001"/>
+            <field name="date" eval="(DateTime.now() - timedelta(days=1)).date()"/>
+            <field name="worked_hours">9.5</field>
+            <field name="standard_hours">8.0</field>
+            <field name="overtime_hours">1.5</field>
+            <field name="overtime_type">weekday</field>
+            <field name="weekday_overtime">1.5</field>
+            <field name="weekend_overtime">0.0</field>
+            <field name="holiday_overtime">0.0</field>
+            <field name="state">approved</field>
+            <field name="approved_by" ref="base.user_admin"/>
+            <field name="notes">Demo overtime record</field>
+        </record>
+
+        <record id="demo_overtime_003" model="hr.overtime">
+            <field name="employee_id" ref="demo_employee_003"/>
+            <field name="date" eval="(DateTime.now() - timedelta(days=2)).date()"/>
+            <field name="worked_hours">10.0</field>
+            <field name="standard_hours">8.0</field>
+            <field name="overtime_hours">2.0</field>
+            <field name="overtime_type">weekday</field>
+            <field name="weekday_overtime">2.0</field>
+            <field name="weekend_overtime">0.0</field>
+            <field name="holiday_overtime">0.0</field>
+            <field name="state">draft</field>
+            <field name="notes">Demo overtime record - pending approval</field>
+        </record>
+
+        <!-- Demo Leave Deduction -->
+        <record id="demo_leave_deduction_001" model="leave.deduction">
+            <field name="employee_id" ref="demo_employee_001"/>
+            <field name="date" eval="(DateTime.now() - timedelta(days=1)).date()"/>
+            <field name="attendance_id" ref="demo_attendance_001_day2"/>
+            <field name="deduction_type">late_arrival</field>
+            <field name="late_minutes">30</field>
+            <field name="early_minutes">0</field>
+            <field name="total_minutes">30</field>
+            <field name="deduction_days">0.0625</field>
+            <field name="grace_period_minutes">15</field>
+            <field name="state">confirmed</field>
+            <field name="notes">Demo leave deduction for late arrival</field>
+        </record>
+
+        <!-- Demo Leave Summary -->
+        <record id="demo_leave_summary_001" model="leave.summary">
+            <field name="employee_id" ref="demo_employee_001"/>
+            <field name="year" eval="DateTime.now().year"/>
+            <field name="total_deductions">0.0625</field>
+            <field name="late_deductions">0.0625</field>
+            <field name="early_deductions">0.0</field>
+            <field name="total_late_count">1</field>
+            <field name="total_early_count">0</field>
+            <field name="remaining_leave_balance">21.9375</field>
+        </record>
+
+        <record id="demo_leave_summary_002" model="leave.summary">
+            <field name="employee_id" ref="demo_employee_002"/>
+            <field name="year" eval="DateTime.now().year"/>
+            <field name="total_deductions">0.0</field>
+            <field name="late_deductions">0.0</field>
+            <field name="early_deductions">0.0</field>
+            <field name="total_late_count">0</field>
+            <field name="total_early_count">1</field>
+            <field name="remaining_leave_balance">22.0</field>
+        </record>
+
+    </data>
+</odoo>

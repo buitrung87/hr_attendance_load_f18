@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Leave Deduction Tree View -->
+        <record id="view_leave_deduction_tree" model="ir.ui.view">
+            <field name="name">leave.deduction.tree</field>
+            <field name="model">leave.deduction</field>
+            <field name="arch" type="xml">
+                <list string="Leave Deductions" decoration-success="state=='confirmed'" decoration-warning="state=='draft'" decoration-danger="state=='cancelled'">
+                    <field name="employee_id"/>
+                    <field name="date"/>
+                    <field name="deduction_type"/>
+                    <field name="late_minutes"/>
+                    <field name="early_minutes"/>
+                    <field name="total_minutes"/>
+                    <field name="deduction_days" sum="Total Days"/>
+                    <field name="state"/>
+                    <field name="attendance_id"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Leave Deduction Form View -->
+        <record id="view_leave_deduction_form" model="ir.ui.view">
+            <field name="name">leave.deduction.form</field>
+            <field name="model">leave.deduction</field>
+            <field name="arch" type="xml">
+                <form string="Leave Deduction">
+                    <header>
+                        <button name="action_confirm" type="object" string="Confirm Deduction" 
+                                class="btn-primary" invisible="state != 'draft'" 
+                                groups="hr_attendance_load_f18.group_attendance_manager"/>
+                        <button name="action_cancel" type="object" string="Cancel" 
+                                class="btn-secondary" invisible="state not in ('draft', 'confirmed')" 
+                                groups="hr_attendance_load_f18.group_attendance_manager"/>
+                        <button name="action_reset_to_draft" type="object" string="Reset to Draft" 
+                                invisible="state != 'cancelled'" 
+                                groups="hr_attendance_load_f18.group_attendance_manager"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,confirmed"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="employee_id" options="{'no_create': True}"/>
+                            </h1>
+                            <h2>
+                                <field name="date"/>
+                            </h2>
+                        </div>
+                        <group>
+                            <group string="Deduction Details">
+                                <field name="deduction_type"/>
+                                <field name="late_minutes"/>
+                                <field name="early_minutes"/>
+                                <field name="total_minutes"/>
+                                <field name="deduction_days"/>
+                                <field name="grace_period_minutes"/>
+                            </group>
+                            <group string="Related Records">
+                                <field name="attendance_id"/>
+                                <field name="leave_allocation_id"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Notes">
+                                <field name="notes" placeholder="Add any notes about this deduction..."/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Leave Deduction Search View -->
+        <record id="view_leave_deduction_search" model="ir.ui.view">
+            <field name="name">leave.deduction.search</field>
+            <field name="model">leave.deduction</field>
+            <field name="arch" type="xml">
+                <search string="Leave Deductions">
+                    <field name="employee_id"/>
+                    <field name="date"/>
+                    <field name="deduction_type"/>
+                    <field name="attendance_id"/>
+                    <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Confirmed" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                    <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                    <separator/>
+                    <filter string="Late Check-In" name="late_in" domain="[('deduction_type', '=', 'late_in')]"/>
+                    <filter string="Early Check-Out" name="early_out" domain="[('deduction_type', '=', 'early_out')]"/>
+                    <filter string="Both" name="both" domain="[('deduction_type', '=', 'both')]"/>
+                    <separator/>
+                    <filter string="My Records" name="my_records" domain="[('employee_id.user_id', '=', uid)]"/>
+                    <filter string="My Team" name="my_team" domain="['|', ('employee_id.parent_id.user_id', '=', uid), ('department_id.manager_id.user_id', '=', uid)]"/>
+                    <separator/>
+                    <filter string="Today" name="today" domain="[('date', '=', context_today())]"/>
+                    <!-- Removed week/month filters using Python datetime; not evaluable client-side -->
+                    <group expand="0" string="Group By">
+                        <filter string="Employee" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                        <filter string="Department" name="group_department" context="{'group_by': 'department_id'}"/>
+                        <filter string="Deduction Type" name="group_deduction_type" context="{'group_by': 'deduction_type'}"/>
+                        <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                        <filter string="Date" name="group_date" context="{'group_by': 'date:day'}"/>
+                        <filter string="Month" name="group_month" context="{'group_by': 'date:month'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Leave Summary Tree View -->
+        <record id="view_leave_summary_tree" model="ir.ui.view">
+            <field name="name">leave.summary.tree</field>
+            <field name="model">leave.summary</field>
+            <field name="arch" type="xml">
+                <list string="Leave Summary">
+                    <field name="employee_id"/>
+                    <field name="year"/>
+                    <field name="allocated_days"/>
+                    <field name="used_days"/>
+                    <field name="remaining_days"/>
+                    <field name="total_deductions" sum="Total Deductions"/>
+                    <field name="deduction_count"/>
+                    <field name="last_updated"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Leave Summary Form View -->
+        <record id="view_leave_summary_form" model="ir.ui.view">
+            <field name="name">leave.summary.form</field>
+            <field name="model">leave.summary</field>
+            <field name="arch" type="xml">
+                <form string="Leave Summary">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="employee_id" options="{'no_create': True}"/>
+                            </h1>
+                            <h2>
+                                Year: <field name="year"/>
+                            </h2>
+                        </div>
+                        <group>
+                            <group string="Leave Balance">
+                                <field name="allocated_days"/>
+                                <field name="used_days"/>
+                                <field name="remaining_days"/>
+                            </group>
+                            <group string="Deductions">
+                                <field name="total_deductions"/>
+                                <field name="deduction_count"/>
+                                <field name="last_updated"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Deduction Details">
+                                <field name="deduction_ids">
+                                    <list>
+                                        <field name="date"/>
+                                        <field name="deduction_type"/>
+                                        <field name="total_minutes"/>
+                                        <field name="deduction_days"/>
+                                        <field name="state"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Leave Summary Search View -->
+        <record id="view_leave_summary_search" model="ir.ui.view">
+            <field name="name">leave.summary.search</field>
+            <field name="model">leave.summary</field>
+            <field name="arch" type="xml">
+                <search string="Leave Summary">
+                    <field name="employee_id"/>
+                    <field name="year"/>
+                    <!-- Removed Current Year filter using Python datetime; not evaluable client-side -->
+                    <filter string="Has Deductions" name="has_deductions" domain="[('deduction_count', '>', 0)]"/>
+                    <filter string="Low Balance" name="low_balance" domain="[('remaining_days', '&lt;', 5)]"/>
+                    <separator/>
+                    <filter string="My Summary" name="my_summary" domain="[('employee_id.user_id', '=', uid)]"/>
+                    <filter string="My Team" name="my_team" domain="['|', ('employee_id.parent_id.user_id', '=', uid), ('department_id.manager_id.user_id', '=', uid)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Employee" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                        <filter string="Department" name="group_department" context="{'group_by': 'department_id'}"/>
+                        <filter string="Year" name="group_year" context="{'group_by': 'year'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Actions -->
+        <record id="action_leave_deduction" model="ir.actions.act_window">
+            <field name="name">Leave Deductions</field>
+            <field name="res_model">leave.deduction</field>
+        <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_this_month': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No leave deductions found!
+                </p>
+                <p>
+                    Leave deductions are automatically calculated for late arrivals and early departures.
+                    Each hour of lateness deducts 0.125 days from annual leave.
+                </p>
+            </field>
+        </record>
+
+        <record id="action_leave_deduction_my" model="ir.actions.act_window">
+            <field name="name">My Leave Deductions</field>
+            <field name="res_model">leave.deduction</field>
+        <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_my_records': 1, 'search_default_this_month': 1}</field>
+            <field name="domain">[('employee_id.user_id', '=', uid)]</field>
+        </record>
+
+        <record id="action_leave_deduction_to_confirm" model="ir.actions.act_window">
+            <field name="name">Deductions to Confirm</field>
+            <field name="res_model">leave.deduction</field>
+        <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_draft': 1, 'search_default_my_team': 1}</field>
+            <field name="domain">[('state', '=', 'draft')]</field>
+        </record>
+
+        <record id="action_leave_summary" model="ir.actions.act_window">
+            <field name="name">Leave Summary</field>
+            <field name="res_model">leave.summary</field>
+        <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_current_year': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No leave summary found!
+                </p>
+                <p>
+                    Leave summaries are automatically generated to track annual leave balances and deductions.
+                </p>
+            </field>
+        </record>
+
+        <record id="action_leave_summary_my" model="ir.actions.act_window">
+            <field name="name">My Leave Summary</field>
+            <field name="res_model">leave.summary</field>
+        <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_my_summary': 1, 'search_default_current_year': 1}</field>
+            <field name="domain">[('employee_id.user_id', '=', uid)]</field>
+        </record>
+
+        <!-- Menu Items -->
+        <menuitem id="menu_leave_integration" 
+                  name="Leave Integration" 
+                  parent="menu_attendance_enhanced_root" 
+                  sequence="30"/>
+
+        <menuitem id="menu_leave_deductions" 
+                  name="Leave Deductions" 
+                  parent="menu_leave_integration" 
+                  action="action_leave_deduction" 
+                  sequence="10"/>
+
+        <menuitem id="menu_leave_deductions_my" 
+                  name="My Deductions" 
+                  parent="menu_leave_integration" 
+                  action="action_leave_deduction_my" 
+                  sequence="20"/>
+
+        <menuitem id="menu_leave_deductions_to_confirm" 
+                  name="To Confirm" 
+                  parent="menu_leave_integration" 
+                  action="action_leave_deduction_to_confirm" 
+                  sequence="30"
+                  groups="hr_attendance_load_f18.group_attendance_manager"/>
+
+        <menuitem id="menu_leave_summary" 
+                  name="Leave Summary" 
+                  parent="menu_leave_integration" 
+                  action="action_leave_summary" 
+                  sequence="40"/>
+
+        <menuitem id="menu_leave_summary_my" 
+                  name="My Leave Summary" 
+                  parent="menu_leave_integration" 
+                  action="action_leave_summary_my" 
+                  sequence="50"/>
+
+    </data>
+</odoo>

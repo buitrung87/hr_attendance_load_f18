@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Attendance Enhanced Configuration Form View -->
+    <record id="view_attendance_enhanced_config_form" model="ir.ui.view">
+        <field name="name">attendance.enhanced.config.form</field>
+        <field name="model">attendance.enhanced.config</field>
+        <field name="arch" type="xml">
+            <form string="Attendance Enhanced Configuration">
+                <header/>
+                
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Attendance Enhanced Configuration</h1>
+                    </div>
+                    
+                    <notebook>
+                        <!-- Device connection configuration removed; manage devices via Attendance Devices menu. -->
+                        
+                        <!-- Working Hours Configuration -->
+                        <page string="Working Hours" name="working_hours">
+                            <group>
+                                <group string="Overtime Settings">
+                                    <field name="overtime_threshold"/>
+                                    <field name="weekday_overtime_rate"/>
+                                    <field name="weekend_overtime_rate"/>
+                                    <field name="holiday_overtime_rate"/>
+                                </group>
+                                
+                                <group string="Grace Period">
+                                    <field name="grace_period_minutes"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- Auto Import Settings -->
+                        <page string="Auto Import" name="auto_import">
+                            <group>
+                                <group string="Import Schedule">
+                                    <field name="auto_import_enabled"/>
+                                    <field name="auto_import_time"/>
+                                    <field name="import_days_back"/>
+                                </group>
+                                
+                                <group string="Deduction Settings">
+                                    <field name="auto_confirm_deductions"/>
+                                    <field name="auto_process_deductions"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- Notification Settings -->
+                        <page string="Notifications" name="notifications">
+                            <group>
+                                <group string="Notification Options">
+                                    <field name="notify_late_arrivals"/>
+                                    <field name="notify_early_departures"/>
+                                    <field name="notify_missing_checkout"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- CSV Import Format -->
+                        <page string="CSV Format" name="csv_format">
+                            <group>
+                                <group string="CSV Settings">
+                                    <field name="csv_date_format"/>
+                                    <field name="csv_delimiter"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Sample CSV Format">
+                                <div class="alert alert-info">
+                                    <h4>Expected CSV Format:</h4>
+                                    <pre>employee_code,check_in,check_out
+EMP001,2024-01-15 08:00:00,2024-01-15 17:00:00
+EMP002,2024-01-15 08:30:00,2024-01-15 17:30:00</pre>
+                                </div>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Attendance Enhanced Configuration Tree View -->
+    <record id="view_attendance_enhanced_config_tree" model="ir.ui.view">
+        <field name="name">attendance.enhanced.config.tree</field>
+        <field name="model">attendance.enhanced.config</field>
+        <field name="arch" type="xml">
+            <list string="Attendance Enhanced Configurations">
+                <field name="auto_import_enabled"/>
+                <field name="overtime_threshold"/>
+                <field name="grace_period_minutes"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Attendance Enhanced Configuration Search View -->
+    <record id="view_attendance_enhanced_config_search" model="ir.ui.view">
+        <field name="name">attendance.enhanced.config.search</field>
+        <field name="model">attendance.enhanced.config</field>
+        <field name="arch" type="xml">
+            <search string="Search Configurations">
+                <filter string="Auto Import Enabled" name="auto_import" domain="[('auto_import_enabled', '=', True)]"/>
+                <group expand="0" string="Group By"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Attendance Enhanced Configuration Action -->
+    <record id="action_attendance_enhanced_config" model="ir.actions.act_window">
+        <field name="name">Attendance Enhanced Configuration</field>
+        <field name="res_model">attendance.enhanced.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first attendance configuration!
+            </p>
+            <p>
+                Configure working hours, overtime rates, grace period,
+                auto import preferences, notifications, and CSV format.
+            </p>
+        </field>
+    </record>
+
+    <!-- Settings Menu -->
+    <record id="menu_attendance_settings" model="ir.ui.menu">
+        <field name="name">Settings</field>
+        <field name="parent_id" ref="menu_attendance_enhanced_root"/>
+        <field name="action" ref="action_attendance_enhanced_config"/>
+        <field name="sequence">100</field>
+    </record>
+
+    <!-- Configuration Menu in Settings -->
+    <menuitem id="menu_attendance_enhanced_config"
+              name="Attendance Enhanced"
+              parent="hr_attendance.menu_hr_attendance_settings"
+              action="action_attendance_enhanced_config"
+              sequence="10"/>
+
+</odoo>

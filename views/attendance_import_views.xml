@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Attendance Import Tree View -->
+        <record id="view_attendance_import_tree" model="ir.ui.view">
+            <field name="name">attendance.import.tree</field>
+            <field name="model">attendance.import</field>
+            <field name="arch" type="xml">
+                <list string="Attendance Imports" decoration-success="state=='done'" decoration-warning="state=='processing'" decoration-danger="state=='error'">
+                    <field name="import_date"/>
+                    <field name="import_type"/>
+                    <field name="machine_ip"/>
+                    <field name="total_records"/>
+                    <field name="processed_records"/>
+                    <field name="failed_records"/>
+                    <field name="state"/>
+                    <field name="create_uid"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Attendance Import Form View -->
+        <record id="view_attendance_import_form" model="ir.ui.view">
+            <field name="name">attendance.import.form</field>
+            <field name="model">attendance.import</field>
+            <field name="arch" type="xml">
+                <form string="Attendance Import">
+                    <header>
+                        <button name="action_process_import" type="object" string="Process Import" 
+                                class="btn-primary" invisible="state != 'draft'"/>
+                        <button name="action_retry_failed" type="object" string="Retry Failed" 
+                                class="btn-secondary" invisible="state != 'error'"/>
+                        <button name="action_cancel" type="object" string="Cancel" 
+                                invisible="state not in ('draft', 'processing')"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,processing,completed"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="import_date" readonly="1"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="import_type"/>
+                                <field name="import_date"/>
+                                <field name="machine_ip" invisible="import_type != 'machine'" required="import_type == 'machine'"/>
+                                <field name="csv_file" widget="binary" invisible="import_type != 'csv'" required="import_type == 'csv'"/>
+                                <field name="csv_filename" invisible="1"/>
+                            </group>
+                            <group>
+                                <field name="total_records"/>
+                                <field name="processed_records"/>
+                                <field name="failed_records"/>
+                                <field name="auto_import"/>
+                                <field name="create_uid" string="Created by"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Import Lines">
+                                <field name="attendance_line_ids">
+                                    <list editable="bottom" decoration-success="state=='processed'" decoration-danger="state=='error'">
+                                        <field name="employee_id"/>
+                                        <field name="check_time"/>
+                                        <field name="check_type"/>
+                                        <field name="state"/>
+                                        <field name="attendance_id"/>
+                                        <field name="error_message"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Log">
+                                <field name="import_log" widget="text"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Attendance Import Search View -->
+        <record id="view_attendance_import_search" model="ir.ui.view">
+            <field name="name">attendance.import.search</field>
+            <field name="model">attendance.import</field>
+            <field name="arch" type="xml">
+                <search string="Attendance Imports">
+                    <field name="import_date"/>
+                    <field name="import_type"/>
+                    <field name="machine_ip"/>
+                    <field name="create_uid"/>
+                    <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Processing" name="processing" domain="[('state', '=', 'processing')]"/>
+                    <filter string="Completed" name="completed" domain="[('state', '=', 'completed')]"/>
+                    <filter string="Failed" name="failed" domain="[('state', '=', 'failed')]"/>
+                    <separator/>
+                    <filter string="Machine Import" name="machine" domain="[('import_type', '=', 'machine')]"/>
+                    <filter string="CSV Import" name="csv" domain="[('import_type', '=', 'csv')]"/>
+                    <separator/>
+                    <filter string="Auto Import" name="auto_import" domain="[('auto_import', '=', True)]"/>
+                    <separator/>
+                    <filter string="Today" name="today" domain="[('import_date', '>=', context_today())]"/>
+                    <!-- Removed week/month filters using Python datetime; not evaluable client-side -->
+                    <group expand="0" string="Group By">
+                        <filter string="Import Type" name="group_import_type" context="{'group_by': 'import_type'}"/>
+                        <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                        <filter string="Import Date" name="group_import_date" context="{'group_by': 'import_date:day'}"/>
+                        <filter string="Created by" name="group_create_uid" context="{'group_by': 'create_uid'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Attendance Import Line Tree View -->
+        <record id="view_attendance_import_line_tree" model="ir.ui.view">
+            <field name="name">attendance.import.line.tree</field>
+            <field name="model">attendance.import.line</field>
+            <field name="arch" type="xml">
+                <list string="Import Lines" decoration-success="state=='processed'" decoration-danger="state=='error'">
+                    <field name="import_id"/>
+                    <field name="employee_id"/>
+                    <field name="check_time"/>
+                    <field name="check_type"/>
+                    <field name="state"/>
+                    <field name="attendance_id"/>
+                    <field name="error_message"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Attendance Import Line Form View -->
+        <record id="view_attendance_import_line_form" model="ir.ui.view">
+            <field name="name">attendance.import.line.form</field>
+            <field name="model">attendance.import.line</field>
+            <field name="arch" type="xml">
+                <form string="Import Line">
+                    <header>
+                        <button name="action_retry_process" type="object" string="Retry Process" 
+                                class="btn-primary" invisible="state != 'error'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,processed,error"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="import_id"/>
+                                <field name="employee_id"/>
+                                <field name="attendance_id"/>
+                                <field name="state"/>
+                            </group>
+                            <group>
+                                <field name="check_time"/>
+                                <field name="check_type"/>
+                                <field name="raw_data"/>
+                            </group>
+                        </group>
+                        <group string="Processing Info" invisible="state == 'draft'">
+                            <field name="error_message" invisible="state != 'error'"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Actions -->
+        <record id="action_attendance_import" model="ir.actions.act_window">
+            <field name="name">Attendance Imports</field>
+            <field name="res_model">attendance.import</field>
+        <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_this_month': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first attendance import!
+                </p>
+                <p>
+                    Import attendance data from F18 machines or CSV files.
+                    You can configure automatic imports or manually upload files.
+                </p>
+            </field>
+        </record>
+
+        <record id="action_attendance_import_line" model="ir.actions.act_window">
+            <field name="name">Import Lines</field>
+            <field name="res_model">attendance.import.line</field>
+        <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_failed': 1}</field>
+        </record>
+
+        <!-- Menu Items -->
+        <menuitem id="menu_attendance_enhanced_root" 
+                  name="Attendance Enhanced" 
+                  sequence="50"/>
+
+        <menuitem id="menu_attendance_import" 
+                  name="Attendance Import" 
+                  parent="menu_attendance_enhanced_root" 
+                  sequence="10"/>
+
+        <menuitem id="menu_attendance_import_list" 
+                  name="Import History" 
+                  parent="menu_attendance_import" 
+                  action="action_attendance_import" 
+                  sequence="10"/>
+
+        <menuitem id="menu_attendance_import_lines" 
+                  name="Import Lines" 
+                  parent="menu_attendance_import" 
+                  action="action_attendance_import_line" 
+                  sequence="20"/>
+
+    </data>
+</odoo>

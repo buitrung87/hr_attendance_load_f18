@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Security Categories -->
+        <record id="module_category_attendance_enhanced" model="ir.module.category">
+            <field name="name">Attendance Enhanced</field>
+            <field name="description">Manage attendance with F18 integration and overtime calculation</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Security Groups -->
+        <record id="group_attendance_user" model="res.groups">
+            <field name="name">Attendance User</field>
+            <field name="category_id" ref="module_category_attendance_enhanced"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">User can view own attendance and overtime records</field>
+        </record>
+
+        <record id="group_attendance_manager" model="res.groups">
+            <field name="name">Attendance Manager</field>
+            <field name="category_id" ref="module_category_attendance_enhanced"/>
+            <field name="implied_ids" eval="[(4, ref('group_attendance_user'))]"/>
+            <field name="comment">Manager can import/edit attendance records, approve overtime, and manage leave deductions</field>
+        </record>
+
+        <record id="group_attendance_admin" model="res.groups">
+            <field name="name">Attendance Administrator</field>
+            <field name="category_id" ref="module_category_attendance_enhanced"/>
+            <field name="implied_ids" eval="[(4, ref('group_attendance_manager'))]"/>
+            <field name="comment">Administrator has full access to all attendance features and configuration</field>
+        </record>
+
+        <!-- Record Rules -->
+        
+        <!-- Attendance Import Rules -->
+        <record id="attendance_import_rule_user" model="ir.rule">
+            <field name="name">Attendance Import: User Access</field>
+            <field name="model_id" ref="model_attendance_import"/>
+            <field name="domain_force">[('create_uid', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="attendance_import_rule_manager" model="ir.rule">
+            <field name="name">Attendance Import: Manager Access</field>
+            <field name="model_id" ref="model_attendance_import"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Overtime Rules -->
+        <record id="hr_overtime_rule_user" model="ir.rule">
+            <field name="name">Overtime: User Own Records</field>
+            <field name="model_id" ref="model_hr_overtime"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="hr_overtime_rule_manager" model="ir.rule">
+            <field name="name">Overtime: Manager Access</field>
+            <field name="model_id" ref="model_hr_overtime"/>
+            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id', 'child_of', user.employee_id.department_id.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Overtime Rules for Attendance Administrator: full access within allowed companies -->
+        <record id="hr_overtime_rule_attendance_admin" model="ir.rule">
+            <field name="name">Overtime: Attendance Admin All (Companies)</field>
+            <field name="model_id" ref="model_hr_overtime"/>
+            <field name="domain_force">[('employee_id.company_id', 'in', user.company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Leave Deduction Rules -->
+        <record id="leave_deduction_rule_user" model="ir.rule">
+            <field name="name">Leave Deduction: User Own Records</field>
+            <field name="model_id" ref="model_leave_deduction"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="leave_deduction_rule_manager" model="ir.rule">
+            <field name="name">Leave Deduction: Manager Access</field>
+            <field name="model_id" ref="model_leave_deduction"/>
+            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id', 'child_of', user.employee_id.department_id.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Leave Deduction Rules for Attendance Administrator: full access within allowed companies -->
+        <record id="leave_deduction_rule_attendance_admin" model="ir.rule">
+            <field name="name">Leave Deduction: Attendance Admin All (Companies)</field>
+            <field name="model_id" ref="model_leave_deduction"/>
+            <field name="domain_force">[('employee_id.company_id', 'in', user.company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Leave Summary Rules -->
+        <record id="leave_summary_rule_user" model="ir.rule">
+            <field name="name">Leave Summary: User Own Records</field>
+            <field name="model_id" ref="model_leave_summary"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="leave_summary_rule_manager" model="ir.rule">
+            <field name="name">Leave Summary: Manager Access</field>
+            <field name="model_id" ref="model_leave_summary"/>
+            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- HR Attendance Rules (extend existing) -->
+        <record id="hr_attendance_rule_user_own" model="ir.rule">
+            <field name="name">HR Attendance: User Own Records</field>
+            <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="hr_attendance_rule_manager_team" model="ir.rule">
+            <field name="name">HR Attendance: Manager Department Tree</field>
+            <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
+            <field name="domain_force">['|', ('employee_id.department_id', 'child_of', user.employee_id.department_id.id), ('employee_id.parent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- HR Employee Rules (extend existing) -->
+        <record id="hr_employee_rule_attendance_user" model="ir.rule">
+            <field name="name">HR Employee: Attendance User Access</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="hr_employee_rule_attendance_manager" model="ir.rule">
+            <field name="name">HR Employee: Manager Department Tree</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">['|', ('department_id', 'child_of', user.employee_id.department_id.id), ('parent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- HR Employee Rules for Attendance Administrator: full access within allowed companies -->
+        <record id="hr_employee_rule_attendance_admin" model="ir.rule">
+            <field name="name">HR Employee: Attendance Admin All (Companies)</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- HR Attendance Rules for Attendance Administrator: full access within allowed companies -->
+        <record id="hr_attendance_rule_attendance_admin" model="ir.rule">
+            <field name="name">HR Attendance: Attendance Admin All (Companies)</field>
+            <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
+            <field name="domain_force">[('employee_id.company_id', 'in', user.company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

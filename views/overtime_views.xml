@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- HR Overtime Tree View -->
+        <record id="view_hr_overtime_tree" model="ir.ui.view">
+            <field name="name">hr.overtime.tree</field>
+            <field name="model">hr.overtime</field>
+            <field name="arch" type="xml">
+                <list string="Overtime Records" decoration-success="state=='approved'" decoration-warning="state=='draft'" decoration-danger="state=='rejected'">
+                    <field name="employee_id"/>
+                    <field name="date"/>
+                    <field name="worked_hours" sum="Total Worked"/>
+                    <field name="standard_hours" sum="Total Standard"/>
+                    <field name="overtime_hours" sum="Total Overtime"/>
+                    <field name="overtime_type"/>
+                    <field name="overtime_amount" sum="Total Amount"/>
+                    <field name="state"/>
+                    <field name="approved_by"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- HR Overtime Form View -->
+        <record id="view_hr_overtime_form" model="ir.ui.view">
+            <field name="name">hr.overtime.form</field>
+            <field name="model">hr.overtime</field>
+            <field name="arch" type="xml">
+                <form string="Overtime Record">
+                    <header>
+                        <button name="action_submit" type="object" string="Submit" 
+                                class="btn-primary" invisible="state != 'draft'"/>
+                        <button name="action_approve" type="object" string="Approve" 
+                                class="btn-primary" invisible="state != 'submitted'" 
+                                groups="hr_attendance_load_f18.group_attendance_manager"/>
+                        <button name="action_reject" type="object" string="Reject" 
+                                class="btn-secondary" invisible="state != 'submitted'" 
+                                groups="hr_attendance_load_f18.group_attendance_manager"/>
+                        <button name="action_reset_to_draft" type="object" string="Reset to Draft" 
+                                invisible="state != 'rejected'" 
+                                groups="hr_attendance_load_f18.group_attendance_manager"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="employee_id" options="{'no_create': True}"/>
+                            </h1>
+                            <h2>
+                                <field name="date"/>
+                            </h2>
+                        </div>
+                        <group>
+                            <group string="Time Information">
+                                <field name="worked_hours"/>
+                                <field name="standard_hours"/>
+                                <field name="overtime_hours"/>
+                                <field name="overtime_type"/>
+                            </group>
+                            <group string="Overtime Details">
+                                <field name="weekday_overtime"/>
+                                <field name="weekend_overtime"/>
+                                <field name="holiday_overtime"/>
+                                <field name="overtime_amount"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Approval">
+                                <field name="approved_by" readonly="1"/>
+                                <field name="approval_date" readonly="1"/>
+                            </group>
+                            <group string="System Info">
+                                <field name="create_uid" string="Created by"/>
+                                <field name="create_date" string="Created on"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Related Attendance">
+                                <field name="attendance_ids">
+                                    <list>
+                                        <field name="check_in"/>
+                                        <field name="check_out"/>
+                                        <field name="worked_hours"/>
+                                        <field name="attendance_status"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Notes">
+                                <field name="notes" placeholder="Add any notes about this overtime record..."/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- HR Overtime Search View -->
+        <record id="view_hr_overtime_search" model="ir.ui.view">
+            <field name="name">hr.overtime.search</field>
+            <field name="model">hr.overtime</field>
+            <field name="arch" type="xml">
+                <search string="Overtime Records">
+                    <field name="employee_id"/>
+                    <field name="date"/>
+                    <field name="overtime_type"/>
+                    <field name="approved_by"/>
+                    <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Approved" name="approved" domain="[('state', '=', 'approved')]"/>
+                    <filter string="Rejected" name="rejected" domain="[('state', '=', 'rejected')]"/>
+                    <separator/>
+                    <filter string="Weekday OT" name="weekday" domain="[('overtime_type', '=', 'weekday')]"/>
+                    <filter string="Weekend OT" name="weekend" domain="[('overtime_type', '=', 'weekend')]"/>
+                    <filter string="Holiday OT" name="holiday" domain="[('overtime_type', '=', 'holiday')]"/>
+                    <separator/>
+                    <filter string="My Records" name="my_records" domain="[('employee_id.user_id', '=', uid)]"/>
+                    <filter string="My Team" name="my_team" domain="['|', ('employee_id.parent_id.user_id', '=', uid), ('department_id.manager_id.user_id', '=', uid)]"/>
+                    <separator/>
+                    <filter string="Today" name="today" domain="[('date', '=', context_today())]"/>
+                    <!-- Removed week/month filters using Python datetime; not evaluable client-side -->
+                    <group expand="0" string="Group By">
+                        <filter string="Employee" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                        <filter string="Department" name="group_department" context="{'group_by': 'department_id'}"/>
+                        <filter string="Overtime Type" name="group_overtime_type" context="{'group_by': 'overtime_type'}"/>
+                        <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                        <filter string="Date" name="group_date" context="{'group_by': 'date:day'}"/>
+                        <filter string="Month" name="group_month" context="{'group_by': 'date:month'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- HR Overtime Kanban View -->
+        <record id="view_hr_overtime_kanban" model="ir.ui.view">
+            <field name="name">hr.overtime.kanban</field>
+            <field name="model">hr.overtime</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="state" class="o_kanban_small_column">
+                    <field name="employee_id"/>
+                    <field name="date"/>
+                    <field name="overtime_hours"/>
+                    <field name="overtime_type"/>
+                    <field name="overtime_amount"/>
+                    <field name="state"/>
+                    <field name="color"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div t-attf-class="oe_kanban_color_#{kanban_getcolor(record.color.raw_value)} oe_kanban_card oe_kanban_global_click">
+                                <div class="o_dropdown_kanban dropdown">
+                                    <a class="dropdown-toggle o-no-caret btn" role="button" data-toggle="dropdown" data-display="static" href="#" aria-label="Dropdown menu" title="Dropdown menu">
+                                        <span class="fa fa-ellipsis-v"/>
+                                    </a>
+                                    <div class="dropdown-menu" role="menu">
+                                        <a role="menuitem" type="edit" class="dropdown-item">Edit</a>
+                                        <a role="menuitem" type="delete" class="dropdown-item">Delete</a>
+                                    </div>
+                                </div>
+                                <div class="oe_kanban_content">
+                                    <div class="o_kanban_record_top">
+                                        <div class="o_kanban_record_headings">
+                                            <strong class="o_kanban_record_title">
+                                                <field name="employee_id"/>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    <div class="o_kanban_record_body">
+                                        <div>
+                                            <i class="fa fa-calendar"/> <field name="date"/>
+                                        </div>
+                                        <div>
+                                            <i class="fa fa-clock-o"/> <field name="overtime_hours"/> hours
+                                        </div>
+                                        <div>
+                                            <i class="fa fa-tag"/> <field name="overtime_type"/>
+                                        </div>
+                                        <div>
+                                            <i class="fa fa-money"/> <field name="overtime_amount"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- HR Overtime Pivot View -->
+        <record id="view_hr_overtime_pivot" model="ir.ui.view">
+            <field name="name">hr.overtime.pivot</field>
+            <field name="model">hr.overtime</field>
+            <field name="arch" type="xml">
+                <pivot string="Overtime Analysis">
+                    <field name="employee_id" type="row"/>
+                    <field name="date" type="col" interval="month"/>
+                    <field name="overtime_hours" type="measure"/>
+                    <field name="overtime_amount" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <!-- HR Overtime Graph View -->
+        <record id="view_hr_overtime_graph" model="ir.ui.view">
+            <field name="name">hr.overtime.graph</field>
+            <field name="model">hr.overtime</field>
+            <field name="arch" type="xml">
+                <graph string="Overtime Analysis" type="bar">
+                    <field name="date" interval="month"/>
+                    <field name="overtime_hours" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <!-- Actions -->
+        <record id="action_hr_overtime" model="ir.actions.act_window">
+            <field name="name">Overtime Records</field>
+            <field name="res_model">hr.overtime</field>
+        <field name="view_mode">list,kanban,form,pivot,graph</field>
+            <field name="context">{'search_default_this_month': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No overtime records found!
+                </p>
+                <p>
+                    Overtime records are automatically calculated based on attendance data.
+                    You can also manually create overtime records for special cases.
+                </p>
+            </field>
+        </record>
+
+        <record id="action_hr_overtime_my" model="ir.actions.act_window">
+            <field name="name">My Overtime</field>
+            <field name="res_model">hr.overtime</field>
+        <field name="view_mode">list,kanban,form</field>
+            <field name="context">{'search_default_my_records': 1, 'search_default_this_month': 1}</field>
+            <field name="domain">[('employee_id.user_id', '=', uid)]</field>
+        </record>
+
+        <record id="action_hr_overtime_to_approve" model="ir.actions.act_window">
+            <field name="name">Overtime to Approve</field>
+            <field name="res_model">hr.overtime</field>
+        <field name="view_mode">list,kanban,form</field>
+            <field name="context">{'search_default_draft': 1, 'search_default_my_team': 1}</field>
+            <field name="domain">[('state', '=', 'draft')]</field>
+        </record>
+
+        <!-- Menu Items -->
+        <menuitem id="menu_overtime" 
+                  name="Overtime" 
+                  parent="menu_attendance_enhanced_root" 
+                  sequence="20"/>
+
+        <menuitem id="menu_overtime_records" 
+                  name="All Overtime" 
+                  parent="menu_overtime" 
+                  action="action_hr_overtime" 
+                  sequence="10"/>
+
+        <menuitem id="menu_overtime_my" 
+                  name="My Overtime" 
+                  parent="menu_overtime" 
+                  action="action_hr_overtime_my" 
+                  sequence="20"/>
+
+        <menuitem id="menu_overtime_to_approve" 
+                  name="To Approve" 
+                  parent="menu_overtime" 
+                  action="action_hr_overtime_to_approve" 
+                  sequence="30"
+                  groups="hr_attendance_load_f18.group_attendance_manager"/>
+
+    </data>
+</odoo>

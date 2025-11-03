@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Attendance Dashboard Tree View -->
+    <record id="view_attendance_dashboard_tree" model="ir.ui.view">
+        <field name="name">attendance.dashboard.tree</field>
+        <field name="model">attendance.dashboard</field>
+        <field name="arch" type="xml">
+            <list string="Attendance Dashboard" create="false" edit="false" delete="false">
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="job_id"/>
+                <field name="date"/>
+                <field name="check_in"/>
+                <field name="check_out"/>
+                <field name="worked_hours" sum="Total Worked Hours"/>
+                <field name="scheduled_hours" sum="Total Scheduled Hours"/>
+                <field name="attendance_status"/>
+                <field name="late_minutes" sum="Total Late Minutes"/>
+                <field name="early_minutes" sum="Total Early Minutes"/>
+                <field name="overtime_hours" sum="Total Overtime Hours"/>
+                <field name="deduction_days" sum="Total Deduction Days"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Attendance Dashboard Search View -->
+    <record id="view_attendance_dashboard_search" model="ir.ui.view">
+        <field name="name">attendance.dashboard.search</field>
+        <field name="model">attendance.dashboard</field>
+        <field name="arch" type="xml">
+            <search string="Search Attendance Dashboard">
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="job_id"/>
+                <field name="date"/>
+                <field name="attendance_status"/>
+                
+                <filter string="Today" name="today" domain="[('date', '=', context_today())]"/>
+                <!-- Removed week/month filters using Python datetime; not evaluable client-side -->
+                
+                <separator/>
+                <filter string="Normal" name="normal" domain="[('attendance_status', '=', 'normal')]"/>
+                <filter string="Late In" name="late_in" domain="[('attendance_status', '=', 'late_in')]"/>
+                <filter string="Early Out" name="early_out" domain="[('attendance_status', '=', 'early_out')]"/>
+                <filter string="Missing Out" name="missing_out" domain="[('attendance_status', '=', 'missing_out')]"/>
+                <filter string="Overtime" name="overtime" domain="[('attendance_status', '=', 'overtime')]"/>
+                
+                <separator/>
+                <filter string="Has Overtime" name="has_overtime" domain="[('overtime_hours', '>', 0)]"/>
+                <filter string="Has Deductions" name="has_deductions" domain="[('deduction_days', '>', 0)]"/>
+                
+                <group expand="0" string="Group By">
+                    <filter string="Employee" name="group_employee" domain="[]" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Department" name="group_department" domain="[]" context="{'group_by': 'department_id'}"/>
+                    <filter string="Job Position" name="group_job" domain="[]" context="{'group_by': 'job_id'}"/>
+                    <filter string="Status" name="group_status" domain="[]" context="{'group_by': 'attendance_status'}"/>
+                    <filter string="Date" name="group_date" domain="[]" context="{'group_by': 'date'}"/>
+                    <filter string="Month" name="group_month" domain="[]" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Attendance Dashboard Pivot View -->
+    <record id="view_attendance_dashboard_pivot" model="ir.ui.view">
+        <field name="name">attendance.dashboard.pivot</field>
+        <field name="model">attendance.dashboard</field>
+        <field name="arch" type="xml">
+            <pivot string="Attendance Analysis">
+                <field name="employee_id" type="row"/>
+                <field name="date" type="col" interval="month"/>
+                <field name="worked_hours" type="measure"/>
+                <field name="overtime_hours" type="measure"/>
+                <field name="late_minutes" type="measure"/>
+                <field name="early_minutes" type="measure"/>
+                <field name="deduction_days" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Attendance Dashboard Graph View -->
+    <record id="view_attendance_dashboard_graph" model="ir.ui.view">
+        <field name="name">attendance.dashboard.graph</field>
+        <field name="model">attendance.dashboard</field>
+        <field name="arch" type="xml">
+            <graph string="Attendance Trends" type="line">
+                <field name="date" type="row" interval="week"/>
+                <field name="worked_hours" type="measure"/>
+                <field name="overtime_hours" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Attendance Dashboard Kanban View -->
+    <record id="view_attendance_dashboard_kanban" model="ir.ui.view">
+        <field name="name">attendance.dashboard.kanban</field>
+        <field name="model">attendance.dashboard</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_dashboard" create="false" edit="false" delete="false">
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="date"/>
+                <field name="worked_hours"/>
+                <field name="overtime_hours"/>
+                <field name="attendance_status"/>
+                <field name="late_minutes"/>
+                <field name="early_minutes"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card oe_kanban_global_click">
+                            <div class="o_kanban_card_header">
+                                <div class="o_kanban_card_header_title">
+                                    <div class="o_field_char o_text_overflow" t-esc="record.employee_id.value"/>
+                                    <div class="text-muted" t-esc="record.department_id.value"/>
+                                </div>
+                            </div>
+                            <div class="o_kanban_card_content">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <button class="btn btn-primary" type="object" name="action_view_attendance">
+                                            <field name="worked_hours"/> hrs
+                                        </button>
+                                    </div>
+                                    <div class="col-6">
+                                        <t t-if="record.overtime_hours.raw_value > 0">
+                                            <span class="badge badge-warning">
+                                                OT: <field name="overtime_hours"/> hrs
+                                            </span>
+                                        </t>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-12">
+                                        <t t-if="record.attendance_status.raw_value == 'late_in'">
+                                            <span class="badge badge-warning">Late: <field name="late_minutes"/> min</span>
+                                        </t>
+                                        <t t-if="record.attendance_status.raw_value == 'early_out'">
+                                            <span class="badge badge-info">Early: <field name="early_minutes"/> min</span>
+                                        </t>
+                                        <t t-if="record.attendance_status.raw_value == 'normal'">
+                                            <span class="badge badge-success">Normal</span>
+                                        </t>
+                                        <t t-if="record.attendance_status.raw_value == 'missing_out'">
+                                            <span class="badge badge-danger">Missing Out</span>
+                                        </t>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="o_kanban_card_footer">
+                                <div class="o_kanban_card_footer_left">
+                                    <span class="text-muted" t-esc="record.date.value"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Attendance Dashboard Action -->
+    <record id="action_attendance_dashboard" model="ir.actions.act_window">
+        <field name="name">Attendance Dashboard</field>
+        <field name="res_model">attendance.dashboard</field>
+        <field name="view_mode">kanban,list,pivot,graph</field>
+        <field name="context">{'search_default_this_month': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No attendance data found!
+            </p>
+            <p>
+                Import attendance data to see analytics and statistics here.
+            </p>
+        </field>
+    </record>
+
+    <!-- Attendance Summary Report Views -->
+    <record id="view_attendance_summary_report_form" model="ir.ui.view">
+        <field name="name">attendance.summary.report.form</field>
+        <field name="model">attendance.summary.report</field>
+        <field name="arch" type="xml">
+            <form string="Attendance Summary Report">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Attendance Summary Report</h1>
+                    </div>
+                    
+                    <group>
+                        <group string="Report Filters">
+                            <field name="report_type"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="employee_ids" widget="many2many_tags"/>
+                            <field name="department_ids" widget="many2many_tags"/>
+                        </group>
+                        
+                        <group string="Grouping Options">
+                            <field name="group_by"/>
+                            <field name="include_weekends"/>
+                            <field name="include_holidays"/>
+                        </group>
+                    </group>
+                    
+                    <footer>
+                        <button name="action_generate_report" string="Generate Report" 
+                                type="object" class="btn-primary"/>
+                        <button name="action_export_excel" string="Export to Excel" 
+                                type="object" class="btn-secondary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Attendance Summary View Tree -->
+    <record id="view_attendance_summary_view_tree" model="ir.ui.view">
+        <field name="name">attendance.summary.view.tree</field>
+        <field name="model">attendance.summary.view</field>
+        <field name="arch" type="xml">
+            <list string="Attendance Summary" create="false" edit="false" delete="false">
+                <field name="name"/>
+                <field name="total_attendances"/>
+                <field name="total_worked_hours" sum="Total Hours"/>
+                <field name="total_overtime_hours" sum="Total Overtime"/>
+                <field name="total_late_count"/>
+                <field name="total_early_count"/>
+                <field name="total_deduction_days" sum="Total Deductions"/>
+                <field name="perfect_attendance"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Actions -->
+    <record id="action_attendance_summary_report" model="ir.actions.act_window">
+        <field name="name">Generate Report</field>
+        <field name="res_model">attendance.summary.report</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menu Items -->
+    <record id="menu_attendance_dashboard" model="ir.ui.menu">
+        <field name="name">Dashboard</field>
+        <field name="parent_id" ref="menu_attendance_enhanced_root"/>
+        <field name="action" ref="action_attendance_dashboard"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="menu_attendance_reports" model="ir.ui.menu">
+        <field name="name">Reports</field>
+        <field name="parent_id" ref="menu_attendance_enhanced_root"/>
+        <field name="sequence">90</field>
+    </record>
+
+    <menuitem id="menu_attendance_summary_report"
+              name="Summary Report"
+              parent="menu_attendance_reports"
+              action="action_attendance_summary_report"
+              sequence="10"/>
+
+</odoo>

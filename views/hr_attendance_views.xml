@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Enhanced HR Attendance Tree View -->
+        <record id="view_hr_attendance_tree_enhanced" model="ir.ui.view">
+            <field name="name">hr.attendance.tree.enhanced</field>
+            <field name="model">hr.attendance</field>
+            <field name="inherit_id" ref="hr_attendance.view_attendance_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//list" position="attributes">
+                    <attribute name="decoration-success">attendance_status == 'normal'</attribute>
+                    <attribute name="decoration-warning">attendance_status in ('late_in', 'early_out')</attribute>
+                    <attribute name="decoration-danger">attendance_status == 'missing_out'</attribute>
+                    <attribute name="decoration-info">attendance_status == 'overtime'</attribute>
+                </xpath>
+                <!-- Insert Date after Employee -->
+                <xpath expr="//list/field[@name='employee_id']" position="after">
+                    <field name="attendance_date"/>
+                </xpath>
+                <!-- Replace check_in/check_out by time-only fields -->
+                <xpath expr="//list/field[@name='check_in']" position="replace">
+                    <field name="check_in_time"/>
+                </xpath>
+                <xpath expr="//list/field[@name='check_out']" position="replace">
+                    <field name="check_out_time"/>
+                </xpath>
+                <!-- Show computed daily OT (HH:MM:SS) after Check Out Time -->
+                <xpath expr="//list/field[@name='check_out_time']" position="after">
+                    <field name="daily_ot_str" string="OT"/>
+                </xpath>
+                <field name="worked_hours" position="after">
+                    <field name="attendance_status"/>
+                    <field name="late_minutes"/>
+                    <field name="early_minutes"/>
+                    <field name="scheduled_hours"/>
+                    <field name="import_source"/>
+                </field>
+            </field>
+        </record>
+
+        <!-- Enhanced HR Attendance Form View -->
+        <record id="view_hr_attendance_form_enhanced" model="ir.ui.view">
+            <field name="name">hr.attendance.form.enhanced</field>
+            <field name="model">hr.attendance</field>
+            <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
+            <field name="arch" type="xml">
+                <field name="worked_hours" position="after">
+                    <field name="attendance_status"/>
+                    <field name="color" invisible="1"/>
+                </field>
+                <xpath expr="//sheet" position="inside">
+                    <notebook>
+                        <page string="Schedule &amp; Status">
+                            <group>
+                                <group string="Scheduled Times">
+                                    <field name="scheduled_check_in"/>
+                                    <field name="scheduled_check_out"/>
+                                    <field name="scheduled_hours"/>
+                                </group>
+                                <group string="Deviations">
+                                    <field name="late_minutes"/>
+                                    <field name="early_minutes"/>
+                                    <field name="attendance_status"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Related Records">
+                            <group>
+                                <group string="Overtime">
+                                    <field name="overtime_id"/>
+                                    <button name="action_view_overtime" type="object" string="View Overtime" 
+                                            class="btn-link" invisible="not overtime_id"/>
+                                </group>
+                                <group string="Leave Deduction">
+                                    <field name="leave_deduction_id"/>
+                                    <button name="action_view_leave_deduction" type="object" string="View Deduction" 
+                                            class="btn-link" invisible="not leave_deduction_id"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Import Info">
+                                    <field name="import_source"/>
+                                    <field name="import_id"/>
+                                </group>
+                                <group string="Notes">
+                                    <field name="notes" nolabel="1"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Enhanced HR Attendance Search View -->
+        <record id="view_hr_attendance_search_enhanced" model="ir.ui.view">
+            <field name="name">hr.attendance.search.enhanced</field>
+            <field name="model">hr.attendance</field>
+            <field name="inherit_id" ref="hr_attendance.hr_attendance_view_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//search" position="inside">
+                    <separator/>
+                    <filter string="Normal" name="normal" domain="[('attendance_status', '=', 'normal')]"/>
+                    <filter string="Late In" name="late_in" domain="[('attendance_status', '=', 'late_in')]"/>
+                    <filter string="Early Out" name="early_out" domain="[('attendance_status', '=', 'early_out')]"/>
+                    <filter string="Missing Out" name="missing_out" domain="[('attendance_status', '=', 'missing_out')]"/>
+                    <filter string="Overtime" name="overtime" domain="[('attendance_status', '=', 'overtime')]"/>
+                    <separator/>
+                    <filter string="Machine Import" name="machine_import" domain="[('import_source', '=', 'f18_machine')]"/>
+                    <filter string="CSV Import" name="csv_import" domain="[('import_source', '=', 'csv_import')]"/>
+                    <filter string="Manual Entry" name="manual" domain="[('import_source', '=', 'manual')]"/>
+                    <separator/>
+                    <filter string="Has Overtime" name="has_overtime" domain="[('overtime_id', '!=', False)]"/>
+                    <filter string="Has Deduction" name="has_deduction" domain="[('leave_deduction_id', '!=', False)]"/>
+                </xpath>
+                <xpath expr="//search/group" position="inside">
+                    <filter string="Status" name="groupby_status" context="{'group_by': 'attendance_status'}"/>
+                    <filter string="Import Source" name="groupby_import_source" context="{'group_by': 'import_source'}"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- HR Attendance Kanban View -->
+        <record id="view_hr_attendance_kanban" model="ir.ui.view">
+            <field name="name">hr.attendance.kanban</field>
+            <field name="model">hr.attendance</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="attendance_status" class="o_kanban_small_column">
+                    <field name="employee_id"/>
+                    <field name="check_in"/>
+                    <field name="check_out"/>
+                    <field name="worked_hours"/>
+                    <field name="attendance_status"/>
+                    <field name="late_minutes"/>
+                    <field name="early_minutes"/>
+                    <field name="color"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div t-attf-class="oe_kanban_color_#{kanban_getcolor(record.color.raw_value)} oe_kanban_card oe_kanban_global_click">
+                                <div class="o_dropdown_kanban dropdown">
+                                    <a class="dropdown-toggle o-no-caret btn" role="button" data-toggle="dropdown" data-display="static" href="#" aria-label="Dropdown menu" title="Dropdown menu">
+                                        <span class="fa fa-ellipsis-v"/>
+                                    </a>
+                                    <div class="dropdown-menu" role="menu">
+                                        <a role="menuitem" type="edit" class="dropdown-item">Edit</a>
+                                        <a role="menuitem" type="delete" class="dropdown-item">Delete</a>
+                                    </div>
+                                </div>
+                                <div class="oe_kanban_content">
+                                    <div class="o_kanban_record_top">
+                                        <div class="o_kanban_record_headings">
+                                            <strong class="o_kanban_record_title">
+                                                <field name="employee_id"/>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    <div class="o_kanban_record_body">
+                                        <div>
+                                            <i class="fa fa-sign-in"/> <field name="check_in"/>
+                                        </div>
+                                        <div t-if="record.check_out.raw_value">
+                                            <i class="fa fa-sign-out"/> <field name="check_out"/>
+                                        </div>
+                                        <div>
+                                            <i class="fa fa-clock-o"/> <field name="worked_hours"/> hours
+                                        </div>
+                                        <div t-if="record.late_minutes.raw_value > 0">
+                                            <i class="fa fa-exclamation-triangle text-warning"/> Late: <field name="late_minutes"/> min
+                                        </div>
+                                        <div t-if="record.early_minutes.raw_value > 0">
+                                            <i class="fa fa-exclamation-triangle text-warning"/> Early: <field name="early_minutes"/> min
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- Actions -->
+        <record id="action_hr_attendance_enhanced" model="ir.actions.act_window">
+            <field name="name">Enhanced Attendance</field>
+            <field name="res_model">hr.attendance</field>
+        <field name="view_mode">list,kanban,form</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                                          (0, 0, {'view_mode': 'list', 'view_id': ref('view_hr_attendance_tree_enhanced')}),
+                                          (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_hr_attendance_kanban')}),
+                                          (0, 0, {'view_mode': 'form', 'view_id': ref('view_hr_attendance_form_enhanced')})]"/>
+            <field name="context">{'search_default_today': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No attendance records found!
+                </p>
+                <p>
+                    Attendance records are automatically imported from F18 machines or can be manually entered.
+                    The system tracks late arrivals, early departures, and overtime automatically.
+                </p>
+            </field>
+        </record>
+
+        <!-- Menu Items -->
+        <menuitem id="menu_attendance_enhanced" 
+                  name="Enhanced Attendance" 
+                  parent="menu_attendance_enhanced_root" 
+                  action="action_hr_attendance_enhanced" 
+                  sequence="40"/>
+
+    </data>
+</odoo>
