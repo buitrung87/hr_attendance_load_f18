@@ -166,6 +166,7 @@
             <field name="name">Attendance Imports</field>
             <field name="res_model">attendance.import</field>
         <field name="view_mode">list,form</field>
+            <field name="groups_id" eval="[(4, ref('hr.group_hr_manager'))]"/>
             <field name="context">{'search_default_this_month': 1}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
@@ -182,6 +183,7 @@
             <field name="name">Import Lines</field>
             <field name="res_model">attendance.import.line</field>
         <field name="view_mode">list,form</field>
+            <field name="groups_id" eval="[(4, ref('hr.group_hr_manager'))]"/>
             <field name="context">{'search_default_failed': 1}</field>
         </record>
 
@@ -193,19 +195,22 @@
         <menuitem id="menu_attendance_import" 
                   name="Attendance Import" 
                   parent="menu_attendance_enhanced_root" 
-                  sequence="10"/>
+                  sequence="10" 
+                  groups="hr.group_hr_manager"/>
 
         <menuitem id="menu_attendance_import_list" 
                   name="Import History" 
                   parent="menu_attendance_import" 
                   action="action_attendance_import" 
-                  sequence="10"/>
+                  sequence="10" 
+                  groups="hr.group_hr_manager"/>
 
         <menuitem id="menu_attendance_import_lines" 
                   name="Import Lines" 
                   parent="menu_attendance_import" 
                   action="action_attendance_import_line" 
-                  sequence="20"/>
+                  sequence="20" 
+                  groups="hr.group_hr_manager"/>
 
     </data>
 </odoo>

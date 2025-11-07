@@ -49,6 +49,9 @@ class AttendanceDevice(models.Model):
                 except Exception:
                     tz = pytz.utc
                     tz_name = 'UTC'
+            # When user specifies a pull range, treat it as a forced reload
+            # to allow re-importing previously processed days and overwriting old data
+            force_reload = bool(device.pull_start or device.pull_end)
             zk = ZK(
                 device.ip_address,
                 port=device.port or 4370,
@@ -97,6 +100,9 @@ class AttendanceDevice(models.Model):
                     ts_utc = to_utc_naive(ts)
                     if not ts_utc:
                         return False
+                    # In forced reload mode, ignore last_log_timestamp to reprocess
+                    if force_reload:
+                        return True
                     if not device.last_log_timestamp:
                         return True
                     last_ts = fields.Datetime.from_string(device.last_log_timestamp)
@@ -208,15 +214,45 @@ class AttendanceDevice(models.Model):
                     start_utc = day_start_local.astimezone(pytz.utc).replace(tzinfo=None)
                     end_utc = day_end_local.astimezone(pytz.utc).replace(tzinfo=None)
                     
-                    # Search for existing attendance record
-                    existing = Attendance.search([
-                        ('employee_id', '=', emp_id),
-                        '|',
-                        '&', ('check_in', '>=', fields.Datetime.to_string(start_utc)),
-                             ('check_in', '<', fields.Datetime.to_string(end_utc)),
-                        '&', ('check_out', '>=', fields.Datetime.to_string(start_utc)),
-                             ('check_out', '<', fields.Datetime.to_string(end_utc)),
-                    ], limit=1)
+                    # Overwrite-by-day: if forced reload, delete all prior device-imported
+                    # attendances for this employee and local day, then write fresh data
+                    if force_reload:
+                        # Fetch all prior device-imported attendances for the employee/day
+                        old_day_records = Attendance.search([
+                            ('employee_id', '=', emp_id),
+                            ('import_source', '=', 'f18_machine'),
+                            '|',
+                            '&', ('check_in', '>=', fields.Datetime.to_string(start_utc)),
+                                 ('check_in', '<', fields.Datetime.to_string(end_utc)),
+                            '&', ('check_out', '>=', fields.Datetime.to_string(start_utc)),
+                                 ('check_out', '<', fields.Datetime.to_string(end_utc)),
+                        ])
+
+                        # Choose a target record to overwrite:
+                        # Prefer a record that cannot be deleted (has leave_deduction) to keep references intact
+                        non_deletable = old_day_records.filtered(lambda r: bool(getattr(r, 'leave_deduction_id', False)))
+                        existing = non_deletable[0] if non_deletable else (old_day_records[0] if old_day_records else False)
+
+                        # Safely delete other records that have no external references
+                        unlinkable = old_day_records.filtered(lambda r: not getattr(r, 'leave_deduction_id', False))
+                        if existing:
+                            unlinkable = unlinkable.filtered(lambda r: r.id != existing.id)
+                        if unlinkable:
+                            # Unlink only those without leave_deduction to avoid FK violations
+                            unlinkable.unlink()
+                    else:
+                        # Find any existing record in that local day window
+                        existing = Attendance.search([
+                            ('employee_id', '=', emp_id),
+                            '|',
+                            '&', ('check_in', '>=', fields.Datetime.to_string(start_utc)),
+                                 ('check_in', '<', fields.Datetime.to_string(end_utc)),
+                            '&', ('check_out', '>=', fields.Datetime.to_string(start_utc)),
+                                 ('check_out', '<', fields.Datetime.to_string(end_utc)),
+                        ], limit=1)
+
+                    # KHÔNG tự đóng bản ghi mở: giữ nguyên Missing Out/ Missing In
+                    # Tránh làm sai trạng thái Attendance; việc bỏ qua ràng buộc sẽ xử lý ở model hr.attendance
                     
                     # Prepare attendance data
                     attendance_data = {
@@ -227,11 +263,18 @@ class AttendanceDevice(models.Model):
                     if check_out_utc:
                         attendance_data['check_out'] = fields.Datetime.to_string(check_out_utc)
                     
-                    if existing:
-                        existing.write(attendance_data)
-                    else:
-                        attendance_data['employee_id'] = emp_id
-                        Attendance.create(attendance_data)
+                    try:
+                        if existing:
+                            existing.write(attendance_data)
+                        else:
+                            attendance_data['employee_id'] = emp_id
+                            Attendance.create(attendance_data)
+                    except Exception as err:
+                        # Ghi lại lỗi nhưng không tự đóng bản ghi trước đó để tránh sai trạng thái
+                        device.last_pull_success = False
+                        device.last_error_message = str(err)
+                        # Bỏ qua ngày này, tiếp tục các bản ghi khác
+                        continue
 
                 # Update device timestamps
                 if last_processed_utc:

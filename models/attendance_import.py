@@ -346,23 +346,18 @@ class AttendanceImport(models.Model):
 
     @api.model
     def cron_auto_import(self):
-        """Cron job to automatically import attendance"""
-        config = self.env['attendance.enhanced.config'].get_config()
-
-        # Respect auto import setting from business configuration
-        if not config.get('auto_import_enabled', False):
-            return
-
-        # Delegate to Attendance Devices connector for pulling logs
+        """Cron job: delegate import purely to attendance.device.
+        No longer depends on Attendance Enhanced config; respects per-device flags.
+        """
         try:
             devices = self.env['attendance.device'].search([('active', '=', True), ('auto_pull', '=', True)])
             if devices:
                 devices.action_pull_attendance()
-                _logger.info('Automatic attendance pull via devices completed successfully')
+                _logger.info('Automatic attendance pull via devices (cron_auto_import) executed successfully')
             else:
-                _logger.warning('No active auto-pull devices found for attendance import')
+                _logger.warning('No active auto-pull devices found (attendance.device)')
         except Exception as e:
-            _logger.error('Automatic attendance pull via devices failed: %s', str(e))
+            _logger.error('Device-based automatic attendance pull failed: %s', str(e))
 
     def action_process_import(self):
         """Process the import - start importing attendance data"""

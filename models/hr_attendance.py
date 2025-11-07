@@ -432,34 +432,23 @@ class HrAttendance(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        # Temporarily disable the default attendance validity check for F18 machine imports
-        # This allows creating attendance records with only check-in or check-out
-        # which will then be handled by our custom status logic.
-        new_vals_list = []
-        for vals in vals_list:
-            if vals.get('import_source') == 'f18_machine':
-                # Remove the employee_id from vals to bypass the default validity check
-                # The check is usually done by searching for an open attendance for the employee
-                employee_id = vals.pop('employee_id', None)
-                attendance = super().create([vals])
-                if employee_id:
-                    attendance.employee_id = employee_id
-                new_vals_list.append(attendance)
-            else:
-                new_vals_list.append(super().create([vals]))
-
-        attendances = self.env['hr.attendance']
-        for att in new_vals_list:
-            attendances |= att
-
+        # Tạo bình thường, sau đó xử lý OT và deduction; ràng buộc hợp lệ sẽ được override bên dưới
+        attendances = super().create(vals_list)
         for attendance in attendances:
-            # Process overtime calculation
             attendance._process_overtime()
-            
-            # Process leave deduction
             attendance._process_leave_deduction()
-        
         return attendances
+
+    # Bỏ qua ràng buộc "chưa check out" cho dữ liệu import từ F18
+    # để có thể tạo bản ghi mới mà vẫn giữ trạng thái Missing In/Out.
+    @api.constrains('employee_id', 'check_in', 'check_out')
+    def _check_validity(self):
+        # Chỉ áp dụng kiểm tra mặc định cho bản ghi KHÔNG phải từ F18
+        non_f18 = self.filtered(lambda r: r.import_source != 'f18_machine')
+        if non_f18:
+            super(HrAttendance, non_f18)._check_validity()
+        # Với F18: bỏ qua ràng buộc để không chặn tạo bản ghi khi ngày trước đó còn mở.
+        return True
 
     def write(self, vals):
         """Override write to reprocess when relevant fields change"""

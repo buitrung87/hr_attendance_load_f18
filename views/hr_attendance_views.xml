@@ -113,10 +113,12 @@
                     <separator/>
                     <filter string="Has Overtime" name="has_overtime" domain="[('overtime_id', '!=', False)]"/>
                     <filter string="Has Deduction" name="has_deduction" domain="[('leave_deduction_id', '!=', False)]"/>
-                </xpath>
-                <xpath expr="//search/group" position="inside">
-                    <filter string="Status" name="groupby_status" context="{'group_by': 'attendance_status'}"/>
-                    <filter string="Import Source" name="groupby_import_source" context="{'group_by': 'import_source'}"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Date" name="groupby_attendance_date" context="{'group_by': 'check_in:month'}"/>
+                        <filter string="Employee" name="groupby_employee" context="{'group_by': 'employee_id'}"/>
+                        <filter string="Status" name="groupby_status" context="{'group_by': 'attendance_status'}"/>
+                        <filter string="Import Source" name="groupby_import_source" context="{'group_by': 'import_source'}"/>
+                    </group>
                 </xpath>
             </field>
         </record>
@@ -189,7 +191,10 @@
                                           (0, 0, {'view_mode': 'list', 'view_id': ref('view_hr_attendance_tree_enhanced')}),
                                           (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_hr_attendance_kanban')}),
                                           (0, 0, {'view_mode': 'form', 'view_id': ref('view_hr_attendance_form_enhanced')})]"/>
-            <field name="context">{'search_default_today': 1}</field>
+            <field name="context">{
+                'group_by': ['check_in:month', 'employee_id'],
+                'search_default_activeemployees': 1
+            }</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     No attendance records found!

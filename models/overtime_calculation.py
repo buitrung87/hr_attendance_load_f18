@@ -379,6 +379,7 @@ class HrOvertime(models.Model):
 
         # Pre-compute daily OT seconds according to business rules
         ot_secs = self._compute_daily_ot_seconds(employee, date, attendances)
+        ot_hours = ot_secs / 3600.0
 
         # Threshold rules:
         # - Weekday: keep/create OT only when >= 0.5 hours
@@ -395,10 +396,51 @@ class HrOvertime(models.Model):
                     pass
             return None
 
+        # Resolve timezone for worked_hours aggregation
+        tz_name = (employee and employee.tz) or self.env.user.tz or 'Asia/Ho_Chi_Minh'
+        try:
+            tz = pytz.timezone(tz_name)
+        except Exception:
+            tz = pytz.utc
+
+        # Aggregate worked hours for the local date
+        total_worked_hours = 0.0
+        for att in attendances:
+            if not att.check_in or not att.check_out:
+                continue
+            try:
+                in_utc = pytz.utc.localize(fields.Datetime.from_string(att.check_in))
+                out_utc = pytz.utc.localize(fields.Datetime.from_string(att.check_out))
+            except Exception:
+                continue
+            in_local = in_utc.astimezone(tz)
+            # Only count if local check-in date matches the target date
+            if in_local.date() != date:
+                continue
+            seconds = (out_utc - in_utc).total_seconds()
+            if seconds > 0:
+                total_worked_hours += seconds / 3600.0
+
+        # Planned standard hours from resource calendar
+        planned_hours = self._get_standard_hours(employee, date)
+
+        # Determine overtime type for the date
+        if self._is_holiday(date, employee):
+            ot_type = 'holiday'
+        elif date.weekday() >= 5:
+            ot_type = 'weekend'
+        else:
+            ot_type = 'weekday'
+
         vals = {
             'employee_id': employee.id,
             'date': date,
             'state': overtime.state if overtime else 'draft',
+            'worked_hours': total_worked_hours,
+            'standard_hours': planned_hours,
+            'weekday_overtime': ot_hours if ot_type == 'weekday' else 0.0,
+            'weekend_overtime': ot_hours if ot_type == 'weekend' else 0.0,
+            'holiday_overtime': ot_hours if ot_type == 'holiday' else 0.0,
         }
 
         if overtime:
@@ -459,9 +501,31 @@ class HrOvertime(models.Model):
         return ot_secs
 
     def _get_standard_hours(self, employee, date):
-        """Deprecated for OT hours calculation; retained for reporting if needed."""
-        # For new rules, standard hours no longer determine OT; return 0.0
-        return 0.0
+        """Return planned working hours for the given employee and date.
+        Uses the employee's resource calendar if available; otherwise falls back
+        to 8 hours on weekdays and 0 on weekends.
+        """
+        calendar = employee.resource_calendar_id if employee else False
+        fallback = 8.0 if date.weekday() < 5 else 0.0
+        if not calendar:
+            return fallback
+
+        # Resource calendar attendance lines: dayofweek '0'..'6' (Mon..Sun), hour_from/hour_to float
+        weekday_str = str(date.weekday())
+        try:
+            lines = calendar.attendance_ids.filtered(lambda l: l.dayofweek == weekday_str)
+        except Exception:
+            # In case attendance_ids or fields differ, use fallback
+            return fallback
+        if not lines:
+            return fallback
+        total = 0.0
+        for l in lines:
+            try:
+                total += float(l.hour_to) - float(l.hour_from)
+            except Exception:
+                continue
+        return total if total > 0 else fallback
 
     def action_submit(self):
         """Submit overtime for approval"""
