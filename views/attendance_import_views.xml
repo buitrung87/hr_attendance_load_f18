@@ -10,7 +10,6 @@
                 <list string="Attendance Imports" decoration-success="state=='done'" decoration-warning="state=='processing'" decoration-danger="state=='error'">
                     <field name="import_date"/>
                     <field name="import_type"/>
-                    <field name="machine_ip"/>
                     <field name="total_records"/>
                     <field name="processed_records"/>
                     <field name="failed_records"/>
@@ -45,7 +44,6 @@
                             <group>
                                 <field name="import_type"/>
                                 <field name="import_date"/>
-                                <field name="machine_ip" invisible="import_type != 'machine'" required="import_type == 'machine'"/>
                                 <field name="csv_file" widget="binary" invisible="import_type != 'csv'" required="import_type == 'csv'"/>
                                 <field name="csv_filename" invisible="1"/>
                             </group>
@@ -87,14 +85,13 @@
                 <search string="Attendance Imports">
                     <field name="import_date"/>
                     <field name="import_type"/>
-                    <field name="machine_ip"/>
                     <field name="create_uid"/>
                     <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
                     <filter string="Processing" name="processing" domain="[('state', '=', 'processing')]"/>
                     <filter string="Completed" name="completed" domain="[('state', '=', 'completed')]"/>
                     <filter string="Failed" name="failed" domain="[('state', '=', 'failed')]"/>
                     <separator/>
-                    <filter string="Machine Import" name="machine" domain="[('import_type', '=', 'machine')]"/>
+                    <filter string="Manual Import" name="manual" domain="[('import_type', '=', 'manual')]"/>
                     <filter string="CSV Import" name="csv" domain="[('import_type', '=', 'csv')]"/>
                     <separator/>
                     <filter string="Auto Import" name="auto_import" domain="[('auto_import', '=', True)]"/>
@@ -173,8 +170,8 @@
                     Create your first attendance import!
                 </p>
                 <p>
-                    Import attendance data from F18 machines or CSV files.
-                    You can configure automatic imports or manually upload files.
+                    Import attendance data từ CSV hoặc tạo thủ công các dòng import.
+                    Tự động: sử dụng Attendance Devices (cron 10 phút) với timezone 'Asia/Ho_Chi_Minh'.
                 </p>
             </field>
         </record>

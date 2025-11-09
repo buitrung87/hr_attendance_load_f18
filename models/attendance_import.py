@@ -23,21 +23,10 @@ class AttendanceImport(models.Model):
         default=fields.Datetime.now,
         required=True
     )
-    machine_ip = fields.Char(
-        string='Machine IP',
-        required=True,
-        help='IP address of the F18 attendance machine'
-    )
-    machine_port = fields.Integer(
-        string='Machine Port',
-        default=4370,
-        required=True
-    )
     import_type = fields.Selection([
-        ('auto', 'Automatic Import'),
         ('manual', 'Manual Import'),
         ('csv', 'CSV Import')
-    ], string='Import Type', default='auto', required=True)
+    ], string='Import Type', default='csv', required=True)
     
     state = fields.Selection([
         ('draft', 'Draft'),
@@ -70,70 +59,15 @@ class AttendanceImport(models.Model):
         help='Indicates if this import was triggered automatically'
     )
 
-    def action_connect_machine(self):
-        """Connect to F18 machine and test connection"""
-        self.ensure_one()
-        try:
-            self.state = 'connecting'
-            self._log_message(_('Connecting to machine at %s:%s') % (self.machine_ip, self.machine_port))
-            
-            # Test connection
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(10)
-            result = sock.connect_ex((self.machine_ip, self.machine_port))
-            sock.close()
-            
-            if result == 0:
-                self._log_message(_('Connection successful'))
-                return True
-            else:
-                raise UserError(_('Cannot connect to machine at %s:%s') % (self.machine_ip, self.machine_port))
-                
-        except Exception as e:
-            self.state = 'error'
-            self.error_message = str(e)
-            self._log_message(_('Connection failed: %s') % str(e))
-            raise UserError(_('Connection failed: %s') % str(e))
-
     def action_import_attendance(self):
-        """Import attendance data from F18 machine"""
+        """Import attendance data (CSV/thủ công)."""
         self.ensure_one()
-        
         if self.import_type == 'csv':
             return self._import_from_csv()
+        elif self.import_type == 'manual':
+            return self._process_existing_lines()
         else:
-            return self._import_from_machine()
-
-    def _import_from_machine(self):
-        """Import attendance data directly from F18 machine via TCP/IP"""
-        try:
-            self.state = 'importing'
-            self._log_message(_('Starting attendance import from machine'))
-            
-            # Connect to machine
-            if not self.action_connect_machine():
-                return False
-            
-            # Get attendance records from machine
-            attendance_data = self._fetch_attendance_from_machine()
-            
-            if not attendance_data:
-                self._log_message(_('No attendance data found on machine'))
-                self.state = 'done'
-                return True
-            
-            # Process the data
-            self._process_attendance_data(attendance_data)
-            
-            self.state = 'done'
-            self._log_message(_('Import completed successfully'))
-            return True
-            
-        except Exception as e:
-            self.state = 'error'
-            self.error_message = str(e)
-            self._log_message(_('Import failed: %s') % str(e))
-            return False
+            raise UserError(_('Chỉ hỗ trợ nhập CSV hoặc xử lý thủ công các dòng import.'))
 
     def _import_from_csv(self):
         """Import attendance data from CSV file"""
@@ -181,38 +115,38 @@ class AttendanceImport(models.Model):
             self._log_message(_('CSV import failed: %s') % str(e))
             return False
 
-    def _fetch_attendance_from_machine(self):
-        """Fetch attendance data from F18 machine using ZKTeco protocol"""
-        # This is a simplified implementation
-        # In a real scenario, you would use the ZKTeco SDK or implement the full protocol
-        
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(30)
-            sock.connect((self.machine_ip, self.machine_port))
-            
-            # Send command to get attendance logs
-            # This is a simplified command structure
-            command = struct.pack('<HHI', 1001, 0, 0)  # CMD_GET_ATTENDANCE
-            sock.send(command)
-            
-            # Receive response
-            response = sock.recv(1024)
-            sock.close()
-            
-            # Parse response (simplified)
-            # In real implementation, you would parse the actual ZKTeco protocol response
-            attendance_data = []
-            
-            # Mock data for demonstration
-            # Replace this with actual protocol parsing
-            self._log_message(_('Received %d bytes from machine') % len(response))
-            
-            return attendance_data
-            
-        except Exception as e:
-            _logger.error('Error fetching data from machine: %s', str(e))
-            raise
+    def _process_existing_lines(self):
+        """Xử lý các dòng import đã tạo thủ công (attendance.import.line)."""
+        self.state = 'processing'
+        processed = 0
+        failed = 0
+        skipped = 0
+        lines = self.attendance_line_ids
+        self.total_records = len(lines)
+        for line in lines:
+            try:
+                if line.state == 'draft':
+                    if line.action_process():
+                        processed += 1
+                    else:
+                        failed += 1
+                elif line.state == 'processed':
+                    skipped += 1
+                else:
+                    # error hoặc trạng thái khác: thử lại
+                    if line.action_retry_process():
+                        processed += 1
+                    else:
+                        failed += 1
+            except Exception as e:
+                failed += 1
+                self._log_message(_('Lỗi xử lý dòng: %s') % str(e))
+        self.processed_records = processed
+        self.failed_records = failed
+        self.skipped_records = skipped
+        self.state = 'done'
+        self._log_message(_('Hoàn tất xử lý thủ công: %d thành công, %d lỗi, %d bỏ qua') % (processed, failed, skipped))
+        return True
 
     def _process_attendance_data(self, attendance_data):
         """Process attendance data and create attendance records"""

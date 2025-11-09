@@ -78,6 +78,9 @@ class LeaveDeduction(models.Model):
     leave_allocation_id = fields.Many2one(
         'hr.leave.allocation',
         string='Leave Allocation',
+        compute='_compute_leave_allocation',
+        store=True,
+        readonly=False,
         help='Leave allocation from which days were deducted'
     )
     
@@ -100,6 +103,19 @@ class LeaveDeduction(models.Model):
         string='Display Name',
         compute='_compute_display_name'
     )
+
+    # Mirror attendance status on deduction for better UI filtering/visibility
+    attendance_status = fields.Selection([
+        ('normal', 'Normal'),
+        ('late_in', 'Late Check-In'),
+        ('early_out', 'Early Check-Out'),
+        ('missing_out', 'Missing Check-Out'),
+        ('missing_in', 'Missing Check-In'),
+        ('late_missing_out', 'Late Check-In + Missing Check-Out'),
+        ('early_missing_in', 'Early Check-Out + Missing Check-In'),
+        ('overtime', 'Overtime'),
+        ('both_issues', 'Late In & Early Out')
+    ], string='Attendance Status', related='attendance_id.attendance_status', store=True)
     
     # Configuration fields
     grace_period_minutes = fields.Float(
@@ -107,6 +123,24 @@ class LeaveDeduction(models.Model):
         default=10.0,
         help='Grace period in minutes before deduction starts'
     )
+
+    @api.depends('employee_id', 'date')
+    def _compute_leave_allocation(self):
+        """Auto-fill allocation when opening/viewing/creating if empty."""
+        for record in self:
+            if not record.leave_allocation_id and record.employee_id and record.date:
+                alloc = record._find_leave_allocation()
+                record.leave_allocation_id = alloc.id if alloc else False
+
+    @api.onchange('employee_id', 'date')
+    def _onchange_auto_leave_allocation(self):
+        """Auto-select approved leave allocation of the employee for the date.
+        Hiển thị luôn Leave Allocation đã approved của user nếu tồn tại.
+        """
+        for record in self:
+            if record.employee_id and record.date:
+                allocation = record._find_leave_allocation()
+                record.leave_allocation_id = allocation.id if allocation else False
 
     @api.depends('employee_id', 'date', 'deduction_type')
     def _compute_display_name(self):
@@ -215,6 +249,10 @@ class LeaveDeduction(models.Model):
                     'state': 'draft'
                 }
             deduction = self.create(deduction_vals)
+            # Auto-assign approved allocation on creation
+            alloc = deduction._find_leave_allocation()
+            if alloc:
+                deduction.leave_allocation_id = alloc.id
             return deduction
 
         if attendance.attendance_status == 'early_missing_in':
@@ -245,6 +283,10 @@ class LeaveDeduction(models.Model):
                     'state': 'draft'
                 }
             deduction = self.create(deduction_vals)
+            # Auto-assign approved allocation on creation
+            alloc = deduction._find_leave_allocation()
+            if alloc:
+                deduction.leave_allocation_id = alloc.id
             return deduction
 
         # Handle pure missing statuses: create dashboard-only records
@@ -287,6 +329,10 @@ class LeaveDeduction(models.Model):
             'state': 'draft'
         }
         deduction = self.create(deduction_vals)
+        # Auto-assign approved allocation on creation
+        alloc = deduction._find_leave_allocation()
+        if alloc:
+            deduction.leave_allocation_id = alloc.id
         
         # Auto-confirm if configured
         if config.get('auto_confirm_deductions', False):
@@ -368,13 +414,13 @@ class LeaveDeduction(models.Model):
 
     def _find_leave_allocation(self):
         """Find the appropriate leave allocation for deduction"""
-        # Look for annual leave allocation
+        # Prefer "Regular" allocations valid for the date
         allocation = self.env['hr.leave.allocation'].search([
             ('employee_id', '=', self.employee_id.id),
             ('state', '=', 'validate'),
-            ('holiday_status_id.allocation_type', '=', 'fixed'),
+            ('allocation_type', '=', 'regular'),
             ('date_from', '<=', self.date),
-            ('date_to', '>=', self.date),
+            '|', ('date_to', '>=', self.date), ('date_to', '=', False),
             ('number_of_days', '>', 0)
         ], order='date_from desc', limit=1)
         
@@ -383,6 +429,7 @@ class LeaveDeduction(models.Model):
             allocation = self.env['hr.leave.allocation'].search([
                 ('employee_id', '=', self.employee_id.id),
                 ('state', '=', 'validate'),
+                '|', ('date_to', '>=', self.date), ('date_to', '=', False),
                 ('number_of_days', '>', 0)
             ], order='date_from desc', limit=1)
         

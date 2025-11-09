@@ -206,12 +206,46 @@
             </field>
         </record>
 
+        <!-- Action for regular users: only group by month and see own records -->
+        <record id="action_hr_attendance_enhanced_my" model="ir.actions.act_window">
+            <field name="name">Enhanced Attendance</field>
+            <field name="res_model">hr.attendance</field>
+            <field name="view_mode">list,kanban,form</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                                          (0, 0, {'view_mode': 'list', 'view_id': ref('view_hr_attendance_tree_enhanced')}),
+                                          (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_hr_attendance_kanban')}),
+                                          (0, 0, {'view_mode': 'form', 'view_id': ref('view_hr_attendance_form_enhanced')})]"/>
+            <field name="domain">[('employee_id.user_id', '=', uid)]</field>
+            <field name="context">{
+                'group_by': ['check_in:month'],
+                'search_default_activeemployees': 1
+            }</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No attendance records found!
+                </p>
+                <p>
+                    Your attendance records are automatically imported from F18 machines or can be manually entered.
+                    The system tracks late arrivals, early departures, and overtime automatically.
+                </p>
+            </field>
+        </record>
+
         <!-- Menu Items -->
+        <!-- HR Manager menu: month and employees grouping -->
         <menuitem id="menu_attendance_enhanced" 
                   name="Enhanced Attendance" 
                   parent="menu_attendance_enhanced_root" 
                   action="action_hr_attendance_enhanced" 
-                  sequence="40"/>
+                  sequence="40"
+                  groups="hr_attendance_load_f18.group_attendance_manager"/>
+
+        <!-- Users menu: month-only grouping and own records -->
+        <menuitem id="menu_attendance_enhanced_my" 
+                  name="Enhanced Attendance" 
+                  parent="menu_attendance_enhanced_root" 
+                  action="action_hr_attendance_enhanced_my" 
+                  sequence="45"/>
 
     </data>
 </odoo>

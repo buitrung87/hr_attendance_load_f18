@@ -53,6 +53,7 @@ Key Features:
         # Data
         'data/cron.xml',
         'data/ir_cron.xml',
+        'data/hide_attendance_menu.xml',
         
         # Views
         'views/attendance_import_views.xml',
