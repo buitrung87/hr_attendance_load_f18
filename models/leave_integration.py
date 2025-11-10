@@ -70,7 +70,10 @@ class LeaveDeduction(models.Model):
     
     state = fields.Selection([
         ('draft', 'Draft'),
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
         ('confirmed', 'Confirmed'),
+        ('approved_deducted', 'Approved + Deducted'),
         ('deducted', 'Deducted'),
         ('cancelled', 'Cancelled')
     ], string='State', default='draft', tracking=True)
@@ -104,6 +107,13 @@ class LeaveDeduction(models.Model):
         compute='_compute_display_name'
     )
 
+    # Helper: identify if current user is the employee of this deduction
+    is_current_user = fields.Boolean(
+        string='Is Current User',
+        compute='_compute_is_current_user',
+        store=False
+    )
+
     # Mirror attendance status on deduction for better UI filtering/visibility
     attendance_status = fields.Selection([
         ('normal', 'Normal'),
@@ -116,6 +126,14 @@ class LeaveDeduction(models.Model):
         ('overtime', 'Overtime'),
         ('both_issues', 'Late In & Early Out')
     ], string='Attendance Status', related='attendance_id.attendance_status', store=True)
+
+    # Mirror missing approval state from attendance for UI logic
+    missing_request_state = fields.Selection([
+        ('none', 'No Request'),
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected')
+    ], string='Missing Approval State', related='attendance_id.missing_request_state', store=True)
     
     # Configuration fields
     grace_period_minutes = fields.Float(
@@ -162,6 +180,43 @@ class LeaveDeduction(models.Model):
                 )
             else:
                 record.display_name = _('New Leave Deduction')
+
+    def _compute_is_current_user(self):
+        """Compute helper boolean for view logic: True if the current user
+        is the employee linked to this deduction (via employee.user_id).
+        """
+        current_uid = self.env.uid
+        for record in self:
+            record.is_current_user = bool(record.employee_id and record.employee_id.user_id and record.employee_id.user_id.id == current_uid)
+
+    def action_request_missing_approval_deduction(self):
+        """Employee requests missing approval via deduction record.
+        Applies to missing_in/missing_out and combined late_missing_out/early_missing_in.
+        """
+        for record in self:
+            # Only the employee themself can request
+            if record.employee_id.user_id.id != self.env.uid:
+                raise UserError(_('Only the employee can request missing approval for this deduction.'))
+            if record.attendance_status in ('missing_in', 'missing_out', 'late_missing_out', 'early_missing_in'):
+                record.attendance_id.action_request_missing_approval()
+                # Reflect the request on deduction state so managers see "Pending Approval"
+                if record.state == 'draft':
+                    record.sudo().write({'state': 'pending'})
+        return True
+
+    def action_approve_missing_on_deduction(self):
+        """Manager approves missing via deduction record.
+        Only when there is a pending request; sets state to approved.
+        """
+        # Ensure the current user has manager rights
+        if not self.env.user.has_group('hr_attendance_load_f18.group_attendance_manager'):
+            raise UserError(_('You do not have permission to approve missing attendance.'))
+        for record in self:
+            if record.attendance_status in ('missing_in', 'missing_out', 'late_missing_out', 'early_missing_in') \
+               and record.missing_request_state == 'pending':
+                record.attendance_id.action_approve_missing()
+                record.state = 'approved'
+        return True
 
     @api.depends('late_minutes', 'early_minutes')
     def _compute_total_minutes(self):
@@ -347,7 +402,9 @@ class LeaveDeduction(models.Model):
         """Confirm the deduction"""
         for record in self:
             if record.state != 'draft':
-                raise UserError(_('Only draft deductions can be confirmed'))
+                # Allow confirm after approved for combined statuses
+                if not (record.state == 'approved' and record.attendance_status in ('late_missing_out', 'early_missing_in')):
+                    raise UserError(_('Only draft deductions can be confirmed'))
             # Set to confirmed
             record.state = 'confirmed'
             # Automatically deduct only for late/early types
@@ -379,9 +436,12 @@ class LeaveDeduction(models.Model):
             # Deduct the days
             allocation.number_of_days -= record.deduction_days
             
-            # Update record
+            # Update record: mark Approved + Deducted for combined statuses after approval
+            final_state = 'deducted'
+            if record.attendance_status in ('late_missing_out', 'early_missing_in') and record.missing_request_state == 'approved':
+                final_state = 'approved_deducted'
             record.write({
-                'state': 'deducted',
+                'state': final_state,
                 'leave_allocation_id': allocation.id
             })
             

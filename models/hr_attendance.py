@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from odoo import models, fields, api, _
 import pytz
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError, AccessError
 
 _logger = logging.getLogger(__name__)
 
@@ -572,15 +572,24 @@ class HrAttendance(models.Model):
     # Simple approval flow for missing check-in/out
     def action_request_missing_approval(self):
         for att in self:
-            # Allow request when auto-detected missing check-in (no check_in but has check_out)
+            # Only the employee themself can request approval for their attendance
+            if not att.employee_id or att.employee_id.user_id.id != self.env.uid:
+                raise AccessError(_('Only the employee can request missing approval for this attendance.'))
+            # Allow request when auto-detected missing check-in/out
+            if att.missing_request_state in ['pending', 'approved']:
+                raise UserError(_('Missing approval has already been requested or approved.'))
             if att.missing_check_in or (not att.check_in and att.check_out) or not att.check_out:
-                att.missing_request_state = 'pending'
+                # Use sudo to modify only the approval-related field to avoid ACL issues
+                att.sudo().write({'missing_request_state': 'pending'})
         return True
 
     def action_approve_missing(self):
+        # Ensure approver has manager rights
+        if not self.env.user.has_group('hr_attendance_load_f18.group_attendance_manager'):
+            raise AccessError(_('You do not have permission to approve missing attendance.'))
         for att in self:
             if att.missing_request_state in ['pending']:
-                att.write({
+                att.sudo().write({
                     'missing_request_state': 'approved',
                     'missing_approval_by': self.env.user.id,
                     'missing_approval_date': fields.Datetime.now(),

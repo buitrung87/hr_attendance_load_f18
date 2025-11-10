@@ -29,8 +29,13 @@
             <field name="arch" type="xml">
                 <form string="Leave Deduction">
                     <header>
+                        <!-- Confirm for normal late/early/both on draft -->
                         <button name="action_confirm" type="object" string="Confirm Deduction" 
-                                class="btn-primary" invisible="state != 'draft'" 
+                                class="btn-primary" invisible="state != 'draft' or deduction_type not in ('late_in','early_out','both')" 
+                                groups="hr_attendance_load_f18.group_attendance_manager"/>
+                        <!-- Confirm for combined statuses after approved -->
+                        <button name="action_confirm" type="object" string="Confirm Deduction" 
+                                class="btn-primary" invisible="attendance_status not in ('late_missing_out','early_missing_in') or missing_request_state != 'approved' or state not in ('draft','approved')" 
                                 groups="hr_attendance_load_f18.group_attendance_manager"/>
                         <button name="action_cancel" type="object" string="Cancel" 
                                 class="btn-secondary" invisible="state not in ('draft', 'confirmed')" 
@@ -38,7 +43,13 @@
                         <button name="action_reset_to_draft" type="object" string="Reset to Draft" 
                                 invisible="state != 'cancelled'" 
                                 groups="hr_attendance_load_f18.group_attendance_manager"/>
-                        <field name="state" widget="statusbar" statusbar_visible="draft,confirmed"/>
+                        <!-- Missing approval flow buttons -->
+                        <button name="action_request_missing_approval_deduction" type="object" string="Request Missing Approval" 
+                                class="btn-secondary" invisible="not is_current_user or attendance_status not in ('missing_in','missing_out','late_missing_out','early_missing_in') or missing_request_state in ('pending','approved')"/>
+                        <button name="action_approve_missing_on_deduction" type="object" string="Approve Missing" 
+                                class="btn-secondary" invisible="attendance_status not in ('missing_in','missing_out','late_missing_out','early_missing_in') or missing_request_state != 'pending' or state not in ('draft','pending','approved')" 
+                                groups="hr_attendance_load_f18.group_attendance_manager"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,approved_deducted,deducted"/>
                     </header>
                     <sheet>
                         <div class="oe_title">
@@ -53,6 +64,7 @@
                             <group string="Deduction Details">
                                 <field name="deduction_type"/>
                                 <field name="attendance_status" readonly="1"/>
+                                <field name="missing_request_state" readonly="1"/>
                                 <field name="late_minutes"/>
                                 <field name="early_minutes"/>
                                 <field name="total_minutes"/>
@@ -88,6 +100,9 @@
                     <field name="attendance_status"/>
                     <field name="attendance_id"/>
                     <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Pending" name="pending" domain="[('state', '=', 'pending')]"/>
+                    <filter string="Approved" name="approved" domain="[('state', '=', 'approved')]"/>
+                    <filter string="Approved + Deducted" name="approved_deducted" domain="[('state', '=', 'approved_deducted')]"/>
                     <filter string="Confirmed" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
                     <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
                     <separator/>
