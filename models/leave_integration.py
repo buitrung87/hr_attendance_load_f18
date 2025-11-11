@@ -571,10 +571,12 @@ class LeaveSummary(models.Model):
     )
     
     # Deduction statistics
-    total_deductions = fields.Integer(
+    total_deductions = fields.Float(
         string='Total Deductions',
         compute='_compute_deduction_stats',
-        store=True
+        store=True,
+        digits=(16, 3),
+        help='Total leave days deducted in the selected year'
     )
     late_deductions = fields.Integer(
         string='Late Check-in Deductions',
@@ -641,7 +643,7 @@ class LeaveSummary(models.Model):
             # Get deducted days
             deductions = self.env['leave.deduction'].search([
                 ('employee_id', '=', record.employee_id.id),
-                ('state', '=', 'deducted'),
+                ('state', 'in', ['deducted', 'approved_deducted']),
                 ('date', '>=', year_start),
                 ('date', '<=', year_end)
             ])
@@ -665,12 +667,14 @@ class LeaveSummary(models.Model):
             
             deductions = self.env['leave.deduction'].search([
                 ('employee_id', '=', record.employee_id.id),
-                ('state', '=', 'deducted'),
+                ('state', 'in', ['deducted', 'approved_deducted']),
                 ('date', '>=', year_start),
                 ('date', '<=', year_end)
             ])
             
-            record.total_deductions = len(deductions)
+            # Total Deductions: sum of deduction days
+            record.total_deductions = sum(deductions.mapped('deduction_days'))
+            # Deduction Count: number of deduction records
             record.deduction_count = len(deductions)
             record.late_deductions = len(deductions.filtered(
                 lambda d: d.deduction_type in ['late_in', 'both']
@@ -681,34 +685,202 @@ class LeaveSummary(models.Model):
 
     @api.model
     def update_all_summaries(self, year=None):
-        """Update leave summaries for all employees"""
+        """Create or update leave summaries for all employees for the given year.
+
+        Logic change: instead of restricting to leave types with `allocation_type = 'fixed'`,
+        we derive relevant leave types from validated allocations overlapping the target year.
+        This guarantees summaries for the exact leave types employees actually have balances for.
+        """
         if not year:
             year = fields.Date.today().year
-        
+
+        year_start = datetime(year, 1, 1).date()
+        year_end = datetime(year, 12, 31).date()
+
         employees = self.env['hr.employee'].search([('active', '=', True)])
-        leave_types = self.env['hr.leave.type'].search([('allocation_type', '=', 'fixed')])
-        
+
+        # Find all validated allocations overlapping the year
+        Allocation = self.env['hr.leave.allocation']
+        allocations = Allocation.search([
+            ('state', '=', 'validate'),
+            ('date_from', '<=', year_end),
+            '|', ('date_to', '>=', year_start), ('date_to', '=', False),
+        ])
+
+        # Relevant leave types are those present in allocations
+        relevant_leave_type_ids = allocations.mapped('holiday_status_id').ids
+        if not relevant_leave_type_ids:
+            # Fallback: include all leave types to ensure at least one summary exists
+            relevant_leave_type_ids = self.env['hr.leave.type'].search([]).ids
+
         for employee in employees:
-            for leave_type in leave_types:
-                # Check if summary exists
+            # Leave types the employee has allocations for; fallback to all relevant types
+            emp_alloc_types = allocations.filtered(lambda a: a.employee_id.id == employee.id).mapped('holiday_status_id').ids
+            target_type_ids = emp_alloc_types or relevant_leave_type_ids
+
+            for leave_type_id in set(target_type_ids):
                 summary = self.search([
                     ('employee_id', '=', employee.id),
-                    ('leave_type_id', '=', leave_type.id),
+                    ('leave_type_id', '=', leave_type_id),
                     ('year', '=', year)
-                ])
-                
+                ], limit=1)
+
                 if not summary:
-                    # Create new summary
-                    self.create({
+                    summary = self.create({
                         'employee_id': employee.id,
-                        'leave_type_id': leave_type.id,
-                        'year': year
+                        'leave_type_id': leave_type_id,
+                        'year': year,
                     })
+
+                # Refresh metrics to keep computed store values up to date
+                summary.sudo().action_update_metrics()
 
     def write(self, vals):
         """Update last_updated field when record is modified"""
         vals['last_updated'] = fields.Datetime.now()
         return super().write(vals)
+
+    # --- Public API helpers -------------------------------------------------
+    @api.model
+    def get_remaining_leave_days(self, employee_id, leave_type_id, year=None):
+        """Return leave balance metrics for given employee and leave type.
+
+        Parameters:
+        - employee_id: ID của nhân viên (model `hr.employee`)
+        - leave_type_id: ID của loại nghỉ (model `hr.leave.type`)
+        - year: Năm cần tính (mặc định là năm hiện tại)
+
+        Trả về dict gồm: allocated_days, used_days, deducted_days, remaining_days.
+        """
+        if not employee_id or not leave_type_id:
+            return {
+                'allocated_days': 0.0,
+                'used_days': 0.0,
+                'deducted_days': 0.0,
+                'remaining_days': 0.0,
+            }
+
+        if year is None:
+            year = fields.Date.today().year
+
+        year_start = datetime(year, 1, 1).date()
+        year_end = datetime(year, 12, 31).date()
+
+        # Tổng ngày được cấp phát (đã validate) trong khoảng năm
+        allocations = self.env['hr.leave.allocation'].search([
+            ('employee_id', '=', employee_id),
+            ('holiday_status_id', '=', leave_type_id),
+            ('state', '=', 'validate'),
+            ('date_from', '<=', year_end),
+            ('date_to', '>=', year_start),
+        ])
+        allocated_days = sum(allocations.mapped('number_of_days'))
+
+        # Tổng ngày đã sử dụng (đã validate) trong năm
+        leaves = self.env['hr.leave'].search([
+            ('employee_id', '=', employee_id),
+            ('holiday_status_id', '=', leave_type_id),
+            ('state', '=', 'validate'),
+            ('date_from', '>=', year_start),
+            ('date_to', '<=', year_end),
+        ])
+        used_days = sum(leaves.mapped('number_of_days'))
+
+        # Tổng ngày bị trừ do đi muộn/về sớm (đã thực trừ) trong năm
+        deductions = self.env['leave.deduction'].search([
+            ('employee_id', '=', employee_id),
+            ('state', 'in', ['deducted', 'approved_deducted']),
+            ('date', '>=', year_start),
+            ('date', '<=', year_end),
+        ])
+        deducted_days = sum(deductions.mapped('deduction_days'))
+
+        remaining_days = allocated_days - used_days - deducted_days
+
+        return {
+            'allocated_days': allocated_days,
+            'used_days': used_days,
+            'deducted_days': deducted_days,
+            'remaining_days': remaining_days,
+        }
+
+    @api.model
+    def get_or_create_summary(self, employee_id, leave_type_id, year=None):
+        """Lấy (hoặc tạo) bản ghi Leave Summary cho nhân viên và loại nghỉ.
+
+        Trả về dict gồm các trường số liệu chính để hiển thị trên form/list.
+        """
+        if year is None:
+            year = fields.Date.today().year
+
+        summary = self.search([
+            ('employee_id', '=', employee_id),
+            ('leave_type_id', '=', leave_type_id),
+            ('year', '=', year),
+        ], limit=1)
+
+        if not summary:
+            summary = self.create({
+                'employee_id': employee_id,
+                'leave_type_id': leave_type_id,
+                'year': year,
+            })
+
+        metrics = self.get_remaining_leave_days(employee_id, leave_type_id, year)
+        # Ghi nhanh các giá trị để đồng bộ hiển thị (các field là compute store)
+        summary.write({
+            'allocated_days': metrics['allocated_days'],
+            'used_days': metrics['used_days'],
+            'deducted_days': metrics['deducted_days'],
+            'remaining_days': metrics['remaining_days'],
+        })
+
+        return {
+            'id': summary.id,
+            'employee_id': employee_id,
+            'leave_type_id': leave_type_id,
+            'year': year,
+            **metrics,
+        }
+
+    def action_update_metrics(self):
+        """Nút trên form: cập nhật lại số liệu cho bản ghi hiện tại."""
+        for record in self:
+            metrics = self.get_remaining_leave_days(
+                record.employee_id.id,
+                record.leave_type_id.id,
+                record.year,
+            )
+            year_start = datetime(record.year, 1, 1).date()
+            year_end = datetime(record.year, 12, 31).date()
+            deductions = self.env['leave.deduction'].search([
+                ('employee_id', '=', record.employee_id.id),
+                ('state', 'in', ['deducted', 'approved_deducted']),
+                ('date', '>=', year_start),
+                ('date', '<=', year_end),
+            ])
+            # Ghi bằng sudo để tránh lỗi quyền ghi đối với người dùng thường
+            record.sudo().write({
+                'allocated_days': metrics['allocated_days'],
+                'used_days': metrics['used_days'],
+                'deducted_days': metrics['deducted_days'],
+                'remaining_days': metrics['remaining_days'],
+                'total_deductions': sum(deductions.mapped('deduction_days')),
+                'deduction_count': len(deductions),
+                'late_deductions': len(deductions.filtered(lambda d: d.deduction_type in ['late_in', 'both'])),
+                'early_deductions': len(deductions.filtered(lambda d: d.deduction_type in ['early_out', 'both'])),
+            })
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Leave Summary'),
+                'message': _('Đã cập nhật số liệu thành công.'),
+                'type': 'success',
+                'sticky': False,
+            }
+        }
 
 
 class HrLeaveAllocation(models.Model):
