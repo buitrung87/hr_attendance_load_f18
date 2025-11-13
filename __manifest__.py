@@ -29,7 +29,7 @@ Key Features:
 * REST API for external system integration
 * Multi-level security and access control
     """,
-    'author': 'Your Company',
+    'author': 'bvtrung',
     'website': 'https://www.yourcompany.com',
     'license': 'LGPL-3',
     'depends': [

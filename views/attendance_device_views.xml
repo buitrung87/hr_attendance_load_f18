@@ -69,7 +69,7 @@
                   name="Devices"
                   parent="menu_attendance_enhanced_root"
                   action="action_attendance_device"
-                  sequence="15"
+                  sequence="70"
                   groups="hr_attendance_load_f18.group_attendance_manager,hr_attendance_load_f18.group_attendance_admin"/>
 
     </data>

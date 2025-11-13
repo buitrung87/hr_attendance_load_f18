@@ -192,7 +192,7 @@
         <menuitem id="menu_attendance_import" 
                   name="Attendance Import" 
                   parent="menu_attendance_enhanced_root" 
-                  sequence="10" 
+                  sequence="50" 
                   groups="hr.group_hr_manager"/>
 
         <menuitem id="menu_attendance_import_list" 

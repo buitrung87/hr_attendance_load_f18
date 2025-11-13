@@ -252,7 +252,7 @@
     <record id="menu_attendance_reports" model="ir.ui.menu">
         <field name="name">Reports</field>
         <field name="parent_id" ref="menu_attendance_enhanced_root"/>
-        <field name="sequence">90</field>
+        <field name="sequence">60</field>
     </record>
 
     <menuitem id="menu_attendance_summary_report"

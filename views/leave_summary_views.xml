@@ -294,7 +294,7 @@
         <menuitem id="menu_leave_integration" 
                   name="Leave Integration" 
                   parent="menu_attendance_enhanced_root" 
-                  sequence="30"/>
+                  sequence="40"/>
 
         <menuitem id="menu_leave_deductions" 
                   name="Leave Deductions" 

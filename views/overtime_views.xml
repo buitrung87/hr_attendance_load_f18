@@ -258,7 +258,7 @@
         <menuitem id="menu_overtime" 
                   name="Overtime" 
                   parent="menu_attendance_enhanced_root" 
-                  sequence="20"/>
+                  sequence="30"/>
 
         <menuitem id="menu_overtime_records" 
                   name="All Overtime" 
