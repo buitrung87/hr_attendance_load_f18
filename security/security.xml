@@ -141,6 +141,17 @@
         <record id="leave_summary_rule_manager" model="ir.rule">
             <field name="name">Leave Summary: Manager Access</field>
             <field name="model_id" ref="model_leave_summary"/>
+            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id', 'child_of', user.employee_id.department_id.id)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <!--
+        <record id="leave_summary_rule_admin" model="ir.rule">
+            <field name="name">Leave Summary: Admin Access</field>
+            <field name="model_id" ref="model_leave_summary"/>
             <field name="domain_force">[('employee_id.company_id', 'in', user.company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
             <field name="perm_read" eval="True"/>
@@ -148,7 +159,7 @@
             <field name="perm_create" eval="True"/>
             <field name="perm_unlink" eval="True"/>
         </record>
-
+        -->
         <!-- HR Attendance Rules (extend existing) -->
         <record id="hr_attendance_rule_user_own" model="ir.rule">
             <field name="name">HR Attendance: User Own Records</field>
@@ -171,6 +182,7 @@
             <field name="perm_create" eval="True"/>
             <field name="perm_unlink" eval="True"/>
         </record>
+
 
         <!-- HR Employee Rules (extend existing) -->
         <record id="hr_employee_rule_attendance_user" model="ir.rule">
@@ -202,9 +214,20 @@
             <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
             <field name="perm_read" eval="True"/>
-            <field name="perm_write" eval="False"/>
-            <field name="perm_create" eval="False"/>
-            <field name="perm_unlink" eval="False"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="hr_employee_rule_hr_admin_company" model="ir.rule">
+            <field name="name">HR Employee: Employees Admin All (Companies)</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
         </record>
 
         <!-- HR Attendance Rules for Attendance Administrator: full access within allowed companies -->

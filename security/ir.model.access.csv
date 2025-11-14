@@ -36,4 +36,4 @@ access_hr_attendance_manager_enhanced,hr.attendance.manager.enhanced,hr_attendan
 access_hr_attendance_admin_enhanced,hr.attendance.admin.enhanced,hr_attendance.model_hr_attendance,group_attendance_admin,1,1,1,1
 access_hr_employee_user_enhanced,hr.employee.user.enhanced,hr.model_hr_employee,group_attendance_user,1,0,0,0
 access_hr_employee_manager_enhanced,hr.employee.manager.enhanced,hr.model_hr_employee,group_attendance_manager,1,0,0,0
-access_hr_employee_admin_enhanced,hr.employee.admin.enhanced,hr.model_hr_employee,group_attendance_admin,1,0,0,0
+access_hr_employee_admin_enhanced,hr.employee.admin.enhanced,hr.model_hr_employee,group_attendance_admin,1,1,0,0

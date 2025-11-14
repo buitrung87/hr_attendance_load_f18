@@ -135,7 +135,7 @@
             <field name="name">leave.summary.tree</field>
             <field name="model">leave.summary</field>
             <field name="arch" type="xml">
-                <list string="Leave Summary" create="false" edit="false" delete="false">
+                <list string="Leave Summary" create="false" edit="false">
                     <field name="employee_id"/>
                     <field name="year"/>
                     <field name="allocated_days"/>
