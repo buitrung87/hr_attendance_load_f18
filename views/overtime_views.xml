@@ -219,6 +219,7 @@
                 'group_by': ['date:month', 'employee_id'],
                 'search_default_this_month': 1
             }</field>
+            <field name="domain">[('employee_id.company_id', 'in', context.get('allowed_company_ids'))]</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     No overtime records found!
@@ -251,7 +252,7 @@
                 'search_default_draft': 1,
                 'search_default_my_team': 1
             }</field>
-            <field name="domain">[('state', '=', 'draft')]</field>
+            <field name="domain">[('state', '=', 'draft'), ('employee_id.company_id', 'in', context.get('allowed_company_ids'))]</field>
         </record>
 
         <!-- Menu Items -->

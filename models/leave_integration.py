@@ -246,7 +246,8 @@ class LeaveDeduction(models.Model):
             '|',
             '&', ('check_in', '>=', date), ('check_in', '<', date + timedelta(days=1)),
             '&', ('check_out', '>=', date), ('check_out', '<', date + timedelta(days=1)),
-            ('attendance_status', 'in', ['late_in', 'early_out', 'missing_in', 'missing_out', 'late_missing_out', 'early_missing_in'])
+            ('attendance_status', 'in', ['late_in', 'early_out', 'missing_in', 'missing_out', 'late_missing_out', 'early_missing_in']),
+            ('employee_id.company_id', 'in', self.env.companies.ids)
         ])
         
         for attendance in attendances:
@@ -260,7 +261,8 @@ class LeaveDeduction(models.Model):
         """Process leave deduction for a specific attendance"""
         # Check if deduction already exists
         existing = self.search([
-            ('attendance_id', '=', attendance.id)
+            ('attendance_id', '=', attendance.id),
+            ('company_id', 'in', self.env.companies.ids)
         ])
         
         if existing:
@@ -289,7 +291,8 @@ class LeaveDeduction(models.Model):
                     'early_minutes': 0.0,
                     'grace_period_minutes': grace_period,
                     'state': 'draft',
-                    'notes': _('Missing Check-Out present')
+                    'notes': _('Missing Check-Out present'),
+                    'company_id': attendance.employee_id.company_id.id
                 }
             else:
                 # Pure missing_out (no late beyond grace): dashboard-only
@@ -301,7 +304,8 @@ class LeaveDeduction(models.Model):
                     'late_minutes': 0.0,
                     'early_minutes': 0.0,
                     'grace_period_minutes': grace_period,
-                    'state': 'draft'
+                    'state': 'draft',
+                    'company_id': attendance.employee_id.company_id.id
                 }
             deduction = self.create(deduction_vals)
             # Auto-assign approved allocation on creation
@@ -323,7 +327,8 @@ class LeaveDeduction(models.Model):
                     'early_minutes': early_minutes,
                     'grace_period_minutes': grace_period,
                     'state': 'draft',
-                    'notes': _('Missing Check-In present')
+                    'notes': _('Missing Check-In present'),
+                    'company_id': attendance.employee_id.company_id.id
                 }
             else:
                 # Pure missing_in (no early): dashboard-only
@@ -335,7 +340,8 @@ class LeaveDeduction(models.Model):
                     'late_minutes': 0.0,
                     'early_minutes': 0.0,
                     'grace_period_minutes': grace_period,
-                    'state': 'draft'
+                    'state': 'draft',
+                    'company_id': attendance.employee_id.company_id.id
                 }
             deduction = self.create(deduction_vals)
             # Auto-assign approved allocation on creation
@@ -381,7 +387,8 @@ class LeaveDeduction(models.Model):
             'late_minutes': late_minutes,
             'early_minutes': early_minutes,
             'grace_period_minutes': grace_period,
-            'state': 'draft'
+            'state': 'draft',
+            'company_id': attendance.employee_id.company_id.id
         }
         deduction = self.create(deduction_vals)
         # Auto-assign approved allocation on creation
@@ -626,7 +633,8 @@ class LeaveSummary(models.Model):
                 ('holiday_status_id', '=', record.leave_type_id.id),
                 ('state', '=', 'validate'),
                 ('date_from', '<=', year_end),
-                ('date_to', '>=', year_start)
+                ('date_to', '>=', year_start),
+                ('employee_id.company_id', 'in', self.env.companies.ids)
             ])
             record.allocated_days = sum(allocations.mapped('number_of_days'))
             
@@ -636,7 +644,8 @@ class LeaveSummary(models.Model):
                 ('holiday_status_id', '=', record.leave_type_id.id),
                 ('state', '=', 'validate'),
                 ('date_from', '>=', year_start),
-                ('date_to', '<=', year_end)
+                ('date_to', '<=', year_end),
+                ('employee_id.company_id', 'in', self.env.companies.ids)
             ])
             record.used_days = sum(leaves.mapped('number_of_days'))
             
@@ -645,7 +654,8 @@ class LeaveSummary(models.Model):
                 ('employee_id', '=', record.employee_id.id),
                 ('state', 'in', ['deducted', 'approved_deducted']),
                 ('date', '>=', year_start),
-                ('date', '<=', year_end)
+                ('date', '<=', year_end),
+                ('company_id', 'in', self.env.companies.ids)
             ])
             record.deducted_days = sum(deductions.mapped('deduction_days'))
             
@@ -669,7 +679,8 @@ class LeaveSummary(models.Model):
                 ('employee_id', '=', record.employee_id.id),
                 ('state', 'in', ['deducted', 'approved_deducted']),
                 ('date', '>=', year_start),
-                ('date', '<=', year_end)
+                ('date', '<=', year_end),
+                ('company_id', 'in', self.env.companies.ids)
             ])
             
             # Total Deductions: sum of deduction days
@@ -697,7 +708,10 @@ class LeaveSummary(models.Model):
         year_start = datetime(year, 1, 1).date()
         year_end = datetime(year, 12, 31).date()
 
-        employees = self.env['hr.employee'].search([('active', '=', True)])
+        employees = self.env['hr.employee'].search([
+            ('active', '=', True),
+            ('company_id', 'in', self.env.companies.ids)
+        ])
 
         # Find all validated allocations overlapping the year
         Allocation = self.env['hr.leave.allocation']
@@ -705,6 +719,7 @@ class LeaveSummary(models.Model):
             ('state', '=', 'validate'),
             ('date_from', '<=', year_end),
             '|', ('date_to', '>=', year_start), ('date_to', '=', False),
+            ('employee_id.company_id', 'in', self.env.companies.ids)
         ])
 
         # Relevant leave types are those present in allocations
@@ -722,7 +737,8 @@ class LeaveSummary(models.Model):
                 summary = self.search([
                     ('employee_id', '=', employee.id),
                     ('leave_type_id', '=', leave_type_id),
-                    ('year', '=', year)
+                    ('year', '=', year),
+                    ('employee_id.company_id', 'in', self.env.companies.ids)
                 ], limit=1)
 
                 if not summary:
@@ -773,6 +789,7 @@ class LeaveSummary(models.Model):
             ('state', '=', 'validate'),
             ('date_from', '<=', year_end),
             ('date_to', '>=', year_start),
+            ('employee_id.company_id', 'in', self.env.companies.ids),
         ])
         allocated_days = sum(allocations.mapped('number_of_days'))
 
@@ -783,6 +800,7 @@ class LeaveSummary(models.Model):
             ('state', '=', 'validate'),
             ('date_from', '>=', year_start),
             ('date_to', '<=', year_end),
+            ('employee_id.company_id', 'in', self.env.companies.ids),
         ])
         used_days = sum(leaves.mapped('number_of_days'))
 
@@ -792,6 +810,7 @@ class LeaveSummary(models.Model):
             ('state', 'in', ['deducted', 'approved_deducted']),
             ('date', '>=', year_start),
             ('date', '<=', year_end),
+            ('company_id', 'in', self.env.companies.ids),
         ])
         deducted_days = sum(deductions.mapped('deduction_days'))
 
@@ -858,6 +877,7 @@ class LeaveSummary(models.Model):
                 ('state', 'in', ['deducted', 'approved_deducted']),
                 ('date', '>=', year_start),
                 ('date', '<=', year_end),
+                ('company_id', 'in', self.env.companies.ids),
             ])
             # Ghi bằng sudo để tránh lỗi quyền ghi đối với người dùng thường
             record.sudo().write({
@@ -948,7 +968,8 @@ class HrEmployee(models.Model):
                 ('employee_id', '=', employee.id),
                 ('state', '=', 'deducted'),
                 ('date', '>=', year_start),
-                ('date', '<=', year_end)
+                ('date', '<=', year_end),
+                ('company_id', 'in', self.env.companies.ids)
             ])
             
             employee.total_deductions_ytd = sum(deductions.mapped('deduction_days'))

@@ -207,29 +207,30 @@ class AttendanceImport(models.Model):
         if not user_id:
             return None
         
-        # Try to find by RFID first
-        employee = self.env['hr.employee'].sudo().search([
-            ('rfid', '=', user_id)
+        allowed_company_ids = self.env.companies.ids
+        employee = self.env['hr.employee'].search([
+            ('rfid', '=', user_id),
+            ('company_id', 'in', allowed_company_ids)
         ], limit=1)
         
         if not employee:
-            # Try to find by barcode
-            employee = self.env['hr.employee'].sudo().search([
-                ('barcode', '=', user_id)
+            employee = self.env['hr.employee'].search([
+                ('barcode', '=', user_id),
+                ('company_id', 'in', allowed_company_ids)
             ], limit=1)
         
         if not employee:
-            # Try to find by employee number
-            employee = self.env['hr.employee'].sudo().search([
-                ('employee_number', '=', user_id)
+            employee = self.env['hr.employee'].search([
+                ('employee_number', '=', user_id),
+                ('company_id', 'in', allowed_company_ids)
             ], limit=1)
 
         if not employee:
-            # Try to find by F18 user id if field exists
             Employee = self.env['hr.employee']
             if 'f18_user_id' in Employee._fields:
-                employee = Employee.sudo().search([
-                    ('f18_user_id', '=', user_id)
+                employee = Employee.search([
+                    ('f18_user_id', '=', user_id),
+                    ('company_id', 'in', allowed_company_ids)
                 ], limit=1)
         
         return employee

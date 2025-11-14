@@ -34,9 +34,11 @@ class AttendanceEnhancedAPI(http.Controller):
         if not employee_code:
             return None, {'error': 'Employee code is required', 'code': 400}
             
-        employee = request.env['hr.employee'].sudo().search([
+        allowed_company_ids = request.env.context.get('allowed_company_ids') or request.env.companies.ids
+        employee = request.env['hr.employee'].search([
             '|', ('employee_number', '=', employee_code),
-            ('rfid_card_code', '=', employee_code)
+            ('rfid_card_code', '=', employee_code),
+            ('company_id', 'in', allowed_company_ids)
         ], limit=1)
         
         if not employee:
@@ -118,7 +120,7 @@ class AttendanceEnhancedAPI(http.Controller):
                     return {'error': 'Check-out time must be after check-in time', 'code': 400}
             
             # Check for existing attendance record
-            existing = request.env['hr.attendance'].sudo().search([
+            existing = request.env['hr.attendance'].search([
                 ('employee_id', '=', employee.id),
                 ('check_in', '>=', check_in.replace(second=0, microsecond=0)),
                 ('check_in', '<=', check_in.replace(second=59, microsecond=999999))
@@ -140,7 +142,10 @@ class AttendanceEnhancedAPI(http.Controller):
                 'notes': f'Imported via API at {fields.Datetime.now()}'
             }
             
-            attendance = request.env['hr.attendance'].sudo().create(attendance_vals)
+            AttendanceModel = request.env['hr.attendance']
+            if 'company_id' in AttendanceModel._fields:
+                attendance_vals['company_id'] = employee.company_id.id
+            attendance = AttendanceModel.create(attendance_vals)
             
             # Calculate worked hours if check_out is provided
             worked_hours = 0
@@ -265,7 +270,7 @@ class AttendanceEnhancedAPI(http.Controller):
                             continue
                     
                     # Check for existing record
-                    existing = request.env['hr.attendance'].sudo().search([
+                    existing = request.env['hr.attendance'].search([
                         ('employee_id', '=', employee.id),
                         ('check_in', '>=', check_in.replace(second=0, microsecond=0)),
                         ('check_in', '<=', check_in.replace(second=59, microsecond=999999))
@@ -289,7 +294,10 @@ class AttendanceEnhancedAPI(http.Controller):
                         'notes': f'Bulk imported via API at {fields.Datetime.now()}'
                     }
                     
-                    attendance = request.env['hr.attendance'].sudo().create(attendance_vals)
+                    AttendanceModel = request.env['hr.attendance']
+                    if 'company_id' in AttendanceModel._fields:
+                        attendance_vals['company_id'] = employee.company_id.id
+                    attendance = AttendanceModel.create(attendance_vals)
                     
                     worked_hours = 0
                     if check_out:
@@ -376,7 +384,9 @@ class AttendanceEnhancedAPI(http.Controller):
                     return {'error': 'Invalid date_to format. Use YYYY-MM-DD', 'code': 400}
             
             # Get attendance records
-            attendances = request.env['hr.attendance'].sudo().search(
+            allowed_company_ids = request.env.context.get('allowed_company_ids') or request.env.companies.ids
+            domain = domain + [('employee_id.company_id', 'in', allowed_company_ids)]
+            attendances = request.env['hr.attendance'].search(
                 domain, order='check_in desc', limit=limit
             )
             

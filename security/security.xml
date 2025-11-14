@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <data>
         
         <!-- Security Categories -->
         <record id="module_category_attendance_enhanced" model="ir.module.category">
@@ -57,6 +57,12 @@
         </record>
 
         <!-- Overtime Rules -->
+        <record id="hr_overtime_rule_company_global" model="ir.rule">
+            <field name="name">Overtime: Employee multi company rule</field>
+            <field name="model_id" ref="model_hr_overtime"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('employee_id.company_id', '=', False), ('employee_id.company_id', 'in', company_ids)]</field>
+        </record>
         <record id="hr_overtime_rule_user" model="ir.rule">
             <field name="name">Overtime: User Own Records</field>
             <field name="model_id" ref="model_hr_overtime"/>
@@ -71,7 +77,7 @@
         <record id="hr_overtime_rule_manager" model="ir.rule">
             <field name="name">Overtime: Manager Access</field>
             <field name="model_id" ref="model_hr_overtime"/>
-            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id', 'child_of', user.employee_id.department_id.id)]</field>
+            <field name="domain_force">['&amp;', ('employee_id.company_id', 'in', company_ids), '|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id', 'child_of', user.employee_id.department_id.id)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -83,7 +89,7 @@
         <record id="hr_overtime_rule_attendance_admin" model="ir.rule">
             <field name="name">Overtime: Attendance Admin All (Companies)</field>
             <field name="model_id" ref="model_hr_overtime"/>
-            <field name="domain_force">[('employee_id.company_id', 'in', user.company_ids.ids)]</field>
+            <field name="domain_force">[('employee_id.company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -92,6 +98,12 @@
         </record>
 
         <!-- Leave Deduction Rules -->
+        <record id="leave_deduction_rule_company_global" model="ir.rule">
+            <field name="name">Leave Deduction: Employee multi company rule</field>
+            <field name="model_id" ref="model_leave_deduction"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('employee_id.company_id', '=', False), ('employee_id.company_id', 'in', company_ids)]</field>
+        </record>
         <record id="leave_deduction_rule_user" model="ir.rule">
             <field name="name">Leave Deduction: User Own Records</field>
             <field name="model_id" ref="model_leave_deduction"/>
@@ -106,7 +118,7 @@
         <record id="leave_deduction_rule_manager" model="ir.rule">
             <field name="name">Leave Deduction: Manager Access</field>
             <field name="model_id" ref="model_leave_deduction"/>
-            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id', 'child_of', user.employee_id.department_id.id)]</field>
+            <field name="domain_force">['&amp;', ('employee_id.company_id', 'in', company_ids), '|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id', 'child_of', user.employee_id.department_id.id)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -118,7 +130,7 @@
         <record id="leave_deduction_rule_attendance_admin" model="ir.rule">
             <field name="name">Leave Deduction: Attendance Admin All (Companies)</field>
             <field name="model_id" ref="model_leave_deduction"/>
-            <field name="domain_force">[('employee_id.company_id', 'in', user.company_ids.ids)]</field>
+            <field name="domain_force">[('employee_id.company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -127,6 +139,12 @@
         </record>
 
         <!-- Leave Summary Rules -->
+        <record id="leave_summary_rule_company_global" model="ir.rule">
+            <field name="name">Leave Summary: Employee multi company rule</field>
+            <field name="model_id" ref="model_leave_summary"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('employee_id.company_id', '=', False), ('employee_id.company_id', 'in', company_ids)]</field>
+        </record>
         <record id="leave_summary_rule_user" model="ir.rule">
             <field name="name">Leave Summary: User Own Records</field>
             <field name="model_id" ref="model_leave_summary"/>
@@ -141,8 +159,18 @@
         <record id="leave_summary_rule_manager" model="ir.rule">
             <field name="name">Leave Summary: Manager Access</field>
             <field name="model_id" ref="model_leave_summary"/>
-            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id', 'child_of', user.employee_id.department_id.id)]</field>
+            <field name="domain_force">['&amp;', ('employee_id.company_id', 'in', company_ids), '|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id', 'child_of', user.employee_id.department_id.id)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="leave_summary_rule_attendance_admin" model="ir.rule">
+            <field name="name">Leave Summary: Attendance Admin All (Companies)</field>
+            <field name="model_id" ref="model_leave_summary"/>
+            <field name="domain_force">[('employee_id.company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
             <field name="perm_create" eval="True"/>
@@ -175,7 +203,7 @@
         <record id="hr_attendance_rule_manager_team" model="ir.rule">
             <field name="name">HR Attendance: Manager Department Tree</field>
             <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
-            <field name="domain_force">['|', ('employee_id.department_id', 'child_of', user.employee_id.department_id.id), ('employee_id.parent_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">['&amp;', ('employee_id.company_id', 'in', company_ids), '|', ('employee_id.department_id', 'child_of', user.employee_id.department_id.id), ('employee_id.parent_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -211,7 +239,7 @@
         <record id="hr_employee_rule_attendance_admin" model="ir.rule">
             <field name="name">HR Employee: Attendance Admin All (Companies)</field>
             <field name="model_id" ref="hr.model_hr_employee"/>
-            <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -222,7 +250,7 @@
         <record id="hr_employee_rule_hr_admin_company" model="ir.rule">
             <field name="name">HR Employee: Employees Admin All (Companies)</field>
             <field name="model_id" ref="hr.model_hr_employee"/>
-            <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -234,7 +262,7 @@
         <record id="hr_attendance_rule_attendance_admin" model="ir.rule">
             <field name="name">HR Attendance: Attendance Admin All (Companies)</field>
             <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
-            <field name="domain_force">[('employee_id.company_id', 'in', user.company_ids.ids)]</field>
+            <field name="domain_force">[('employee_id.company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_attendance_admin'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
